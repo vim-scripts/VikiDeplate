@@ -3,8 +3,8 @@
 " @Website:     http://members.a1.net/t.link/
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     16-Jän-2004.
-" @Last Change: 27-Sep-2004.
-" @Revision: 0.158
+" @Last Change: 20-Okt-2004.
+" @Revision: 0.174
 
 if exists("b:did_indent") || exists("g:vikiNoIndent")
     finish
@@ -46,54 +46,67 @@ fun! VikiGetIndent()
         return cind
     endif
     
+    let pnum   = v:lnum - 1
+    let pind   = indent(pnum)
+    
+    let pline  = getline(pnum) " last line
+    let plCont = matchend(pline, '\\$')
+    
+    if plCont >= 0
+        let plHeading = matchend(pline, '^\*\+\s\+')
+        if plHeading >= 0
+            " echo "DBG ". plHeading
+            return plHeading
+        else
+            " echo "DBG ". pind
+            return pind
+        endif
+    end
+    
     if cind > 0
         let listRx = '^\s\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\s'
         let descRx = '^\s\+.\{-1,}\s::\s'
         
         let cline = getline(cnum) " current line
 
-        let pnum   = v:lnum - 1
-        let pind   = indent(pnum)
-        
         let clList = matchend(cline, listRx)
         let clDesc = matchend(cline, descRx)
         let cln    = clList >= 0 ? clList : clDesc
-
-        " echom "DBG clList=". clList ." clDesc=". clDesc ." cind=". cind ." ". " pind=".pind." ".cline
 
         if clList >= 0 || clDesc >= 0
             let spaceEnd = matchend(cline, '^\s\+')
             let rv = (spaceEnd / &sw) * &sw
             return rv
         else
-            let pline  = getline(pnum) " last line
             let plList = matchend(pline, listRx)
-            let plDesc = matchend(pline, descRx)
             " echom "DBG plList=". plList ." plDesc=". plDesc
-
             if plList >= 0
-                " echom "DBG Return ". plList
+                " echom "DBG plList ". plList ." ". pline
                 return plList
             endif
 
+            let plDesc = matchend(pline, descRx)
             if plDesc >= 0
-                " echom "DBG Return ". pind + (&sw / 2)
+                " echom "DBG plDesc ". pind + (&sw / 2)
                 return pind + (&sw / 2)
             endif
 
             if cind < ind
                 let rv = (cind / &sw) * &sw
+                " echom "DBG cind < ind ". rv
                 return rv
             elseif cind >= ind
                 if cind % &sw == 0
+                    " echom "DBG cind % &sw ". cind
                     return cind
                 else
+                    " echom "DBG cind >= ind ". ind
                     return ind
                 end
             endif
         endif
     endif
 
-    return cind
+    return ind
 endfun
 

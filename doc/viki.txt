@@ -42,8 +42,37 @@ the cursor to the next/previous viki name).
                                                     *viki-installation*
 Installation~
 
-Extract viki.zip to your local vimfiles directory ($VIM/vimfiles/ or ~/.vim) 
-and run |:helptags| on that directory.
+Extract viki.zip to your local vimfiles directory (see also 
+|add-global-plugin|) so that you get: >
+
+    (Linux etc.) $HOME/.vim/
+    (Windows) $VIM/vimviles/
+        compiler/  doc/  etc/ ftplugin/  plugin/  syntax/
+
+These directories are used for installing user-specific plugins. It's possible 
+that these directories already exist and are populated with other plugins -- 
+in which case you probably already knew this. ;-)
+
+Uninstalling viki requires deleting the files from the viki archive by hand. 
+Alternatively, you can feed the file etc/Viki.lst to rm: >
+    
+    cd $HOME/.vim/
+    rm -i `cat etc/Viki.lst`
+
+Viki will be automatically loaded when starting vim. In case you have vim 
+already running and don't want to restart it, you can also type: >
+    
+    :runtime plugin/viki.vim
+
+Then run >
+
+(Linux etc.) >
+    :helptags $HOME/.vim/doc
+
+(Windows) >
+    :helptags $VIM/vimfiles/doc
+
+
 
 Customization:                                      *viki-customization*
 It's probably a good idea to check the values of the following variables:
@@ -84,7 +113,7 @@ less about page names: >
 This could then be accessed as SCI::ThisIdea, which would refer to the file 
 "~/Projects/Sci/Ideas/ThisIdea.txt".
 
-In order to use the LaTeX enabled viki variant, add this to your .vimrc file: >
+In order to use the LaTeX enabled viki variant, add this to your |vimrc| file: >
 
     au FileType tex let b:vikiFamily="LaTeX"
 
@@ -338,12 +367,21 @@ Strings~
 
                                                     *viki-textstyles*
 Textstyles~
-*bold*,       **continuous bold**
-/italic/,     //continuous italic//
-_underlined_, __continuous underline__
-=typewriter=, ==continuous typewriter==
+There are two markup styles which are selected on the basis of 
+|vikiTextStyles|. 2 is the default now.
 
-    NOTE: There must not by a whitespace after the opening mark.
+If |vikiTextStyles| is 2, the markup is like this: >
+
+    __emphasized__, ''typewriter''
+
+If |vikiTextStyles| is 1, the markup is like this: >
+
+    *bold*,       **continuous bold**
+    /italic/,     //continuous italic//
+    _underlined_, __continuous underline__
+    =typewriter=, ==continuous typewriter==
+
+<   NOTE: There must not by a whitespace after the opening mark.
 
     NOTE: For the word styles, there must be a non-word character (|/\W|) 
     before the opening mark, i.e. a/b/c will be highlighted as normal text -- 
@@ -583,7 +621,7 @@ Simple Viki Names [2]:                              *viki-vars-simple-names*
 - g:vikiLowerCharacters, g:vikiUpperCharacters, b:vikiLowerCharacters, 
   b:vikiUpperCharacters
     These default to "a-z" and "A-Z" respectively; "international" users 
-    should set these variables in their vimrc file to fit their needs
+    should set these variables in their |vimrc| file to fit their needs
 
 - b:vikiAnchorMarker
 
@@ -632,6 +670,10 @@ File handling:
 
 
 Markup:
+
+- g:vikiTextStyles, b:vikiTextStyles                *vikiTextStyles*
+    Default: 2
+    Defines the markup of |viki-textstyles| like emphasized or code.
 
 - g:vikiCommentStart                                *g:vikiCommentStart*
     Default value: %
@@ -783,7 +825,7 @@ could be defined as: \newcommand{\viki}[2][]{#2}
 
 If b:vikiFamily is set to "LaTeX", then calling |:VikiMinorMode| will use 
 these commands instead of normal viki names. This change can be made permanent 
-by adding this line to your vimrc file: >
+by adding this line to your |vimrc| file: >
 
     au FileType tex let b:vikiFamily="LaTeX"
 <

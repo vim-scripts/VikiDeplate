@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 27-Sep-2004.
-" @Revision: 1.5.1.622
+" @Last Change: 21-Okt-2004.
+" @Revision: 1.5.2.22
 "
 " vimscript #861
 "
@@ -84,18 +84,19 @@ if !exists("g:vikiInexistentColor")
     endif
 endif
 
-if !exists("g:vikiMapMouse")        | let g:vikiMapMouse = 1              | endif "{{{2
-if !exists("g:vikiUseParentSuffix") | let g:vikiUseParentSuffix = 0       | endif "{{{2
-if !exists("g:vikiNameSuffix")      | let g:vikiNameSuffix = ""           | endif "{{{2
-if !exists("g:vikiAnchorMarker")    | let g:vikiAnchorMarker = "#"        | endif "{{{2
-if !exists("g:vikiNameTypes")       | let g:vikiNameTypes = "csSeui"      | endif "{{{2
-if !exists("g:vikiSaveHistory")     | let g:vikiSaveHistory = 0           | endif "{{{2
-if !exists("g:vikiExplorer")        | let g:vikiExplorer = "Sexplore"     | endif "{{{2
-if !exists("g:vikiMarkInexistent")  | let g:vikiMarkInexistent = 1        | endif "{{{2
-if !exists("g:vikiMapInexistent")   | let g:vikiMapInexistent = 1         | endif "{{{2
-if !exists("g:vikiMapKeys")         | let g:vikiMapKeys = ").,;:!?\"'"    | endif "{{{2
-if !exists("g:vikiFamily")          | let g:vikiFamily = ""               | endif "{{{2
-if !exists("g:vikiDirSeparator")    | let g:vikiDirSeparator = "/"        | endif "{{{2
+if !exists("g:vikiMapMouse")         | let g:vikiMapMouse = 1           | endif "{{{2
+if !exists("g:vikiUseParentSuffix")  | let g:vikiUseParentSuffix = 0    | endif "{{{2
+if !exists("g:vikiNameSuffix")       | let g:vikiNameSuffix = ""        | endif "{{{2
+if !exists("g:vikiAnchorMarker")     | let g:vikiAnchorMarker = "#"     | endif "{{{2
+if !exists("g:vikiNameTypes")        | let g:vikiNameTypes = "csSeui"   | endif "{{{2
+if !exists("g:vikiSaveHistory")      | let g:vikiSaveHistory = 0        | endif "{{{2
+if !exists("g:vikiExplorer")         | let g:vikiExplorer = "Sexplore"  | endif "{{{2
+if !exists("g:vikiMarkInexistent")   | let g:vikiMarkInexistent = 1     | endif "{{{2
+if !exists("g:vikiMapInexistent")    | let g:vikiMapInexistent = 1      | endif "{{{2
+if !exists("g:vikiMapKeys")          | let g:vikiMapKeys = ").,;:!?\"'" | endif "{{{2
+if !exists("g:vikiFamily")           | let g:vikiFamily = ""            | endif "{{{2
+if !exists("g:vikiDirSeparator")     | let g:vikiDirSeparator = "/"     | endif "{{{2
+if !exists("g:vikiTextstylesVer")    | let g:vikiTextstylesVer = 2      | endif "{{{2
 
 if !exists("g:vikiOpenFileWith_ANY") && has("win32") "{{{2
     let g:vikiOpenFileWith_ANY = "silent !cmd /c start %{FILE}"
@@ -232,13 +233,16 @@ fun! <SID>VikiMarkInexistent(line1, line2, ...)
     if line(".") == 1 && line("$") == max
         let b:vikiNamesNull = ""
         let b:vikiNamesOk   = ""
+    else
+        if !exists("b:vikiNamesNull") | let b:vikiNamesNull = "" | endif
+        if !exists("b:vikiNamesOk")   | let b:vikiNamesOk   = "" | endif
+    endif
+
+    let feedback = (max - min) > 5
+    if feedback
         let sl = &statusline
         let &statusline="Viki: checking line ". min ."-". max
         redrawstatus
-    else
-        let sl = ""
-        if !exists("b:vikiNamesNull") | let b:vikiNamesNull = "" | endif
-        if !exists("b:vikiNamesOk")   | let b:vikiNamesOk   = "" | endif
     endif
 
     if line(".") == 1
@@ -274,7 +278,7 @@ fun! <SID>VikiMarkInexistent(line1, line2, ...)
             else
                 let check = 0
             endif
-            if check && dest != g:vikiSelfRef && !isdirectory(dest)
+            if check && dest != "" && dest != g:vikiSelfRef && !isdirectory(dest)
                 if filereadable(dest)
                     " let b:vikiNamesNull = MvRemoveElementAll(b:vikiNamesNull, "\n", partx)
                     " let b:vikiNamesOk   = MvPushToFront(b:vikiNamesOk, "\n", partx)
@@ -306,7 +310,7 @@ fun! <SID>VikiMarkInexistent(line1, line2, ...)
         endif
     endif
     exe "norm! ". li ."G". vco ."|"
-    if sl != ""
+    if feedback
         let &statusline=sl
     endif
 endfun
@@ -391,6 +395,7 @@ fun! VikiSetupBuffer(state, ...) "{{{3
     call VikiSetBufferVar("vikiSpecialProtocols")
     call VikiSetBufferVar("vikiSpecialProtocolsExceptions")
     call VikiSetBufferVar("vikiMarkInexistent")
+    call VikiSetBufferVar("vikiTextstylesVer")
 
     if a:state =~ '1$'
         call VikiSetBufferVar("vikiCommentStart", 
@@ -462,9 +467,9 @@ fun! VikiSetupBuffer(state, ...) "{{{3
     
     if b:vikiNameTypes =~# "e" && !(dontSetup =~# "e")
         let b:vikiExtendedNameRx = '\[\[\(\('.b:vikiSpecialProtocols.'\)://[^]]\+\|[^]#]\+\)\?'.
-                    \ '\(#\('. b:vikiAnchorNameRx .'\)\)\?\]\(\[\([^]#]\+\)\]\)\?[!~\-]*\]'
+                    \ '\(#\('. b:vikiAnchorNameRx .'\)\)\?\]\(\[\([^]]\+\)\]\)\?[!~\-]*\]'
         let b:vikiExtendedNameSimpleRx = '\[\[\('. b:vikiSpecialProtocols .'://[^]]\+\|[^]#]\+\)\?'.
-                    \ '\(#'. b:vikiAnchorNameRx .'\)\?\]\(\[[^]#]\+\]\)\?[!~\-]*\]'
+                    \ '\(#'. b:vikiAnchorNameRx .'\)\?\]\(\[[^]]\+\]\)\?[!~\-]*\]'
         let b:vikiExtendedNameNameIdx   = 6
         let b:vikiExtendedNameDestIdx   = 1
         let b:vikiExtendedNameAnchorIdx = 4
@@ -575,8 +580,8 @@ fun! VikiMapKeys(state)
         endif
     endif
     if !hasmapto("VikiQuote") && exists("*VEnclose")
-        vmap <buffer> <silent> <LocalLeader>vq :VikiQuote<cr>:VikiMarknexistentInLineQuick<cr>
-        nmap <buffer> <silent> <LocalLeader>vq viw:VikiQuote<cr>:VikiMarkInexistentInLineQuick<cr>
+        vnoremap <buffer> <silent> <LocalLeader>vq :VikiQuote<cr><esc>:VikiMarkInexistentInLineQuick<cr>v
+        nnoremap <buffer> <silent> <LocalLeader>vq viw:VikiQuote<cr><esc>:VikiMarkInexistentInLineQuick<cr>
     endif
     if !hasmapto("VikiGoBack")
         nnoremap <buffer> <silent> <LocalLeader>vb :call VikiGoBack()<cr>
@@ -708,7 +713,7 @@ endfun
 
 fun! <SID>VikiSelectBackRef(...) "{{{3
     if exists("b:VikiBackFile") && exists("b:VikiBackLine") && exists("b:VikiBackCol")
-        if a:0 >= 1 && a:1 > 0
+        if a:0 >= 1 && a:1 >= 0
             let s = a:1
         else
             let s = VikiSelect(b:VikiBackFile, g:vikiDefSep, "Select Back Reference")
@@ -914,6 +919,8 @@ fun! <SID>VikiFollowLink(def, ...) "{{{3
                 call VikiOpenSpecialFile(dest)
             elseif filereadable(dest)                 "reference to a local, already existing file
                 call <SID>VikiOpenLink(dest, anchor, 0, "", winNr)
+            elseif bufexists(dest)
+                exec "buffer ". dest
             elseif isdirectory(dest)
                 exe g:vikiExplorer ." ". dest
             else
@@ -1264,12 +1271,18 @@ ________________________________________________________________________________
 
 * To Do
 
+- handle commands and macros: #INCLUDE, #IMG, #WITH, {ref}, {label}
 - don't know how to deal with viki names spanning several lines
-- Recheck the key binding of c-cr
 - ...
 
 
 * Change Log
+1.5.2
+- changed default markup of textstyles: __emphasize__, ''code''; the 
+previous markup can be re-enabled by setting g:vikiTextstylesVer to 1)
+- fixed problem with VikiQuote
+- on follow link check for yet unsaved buffers too
+
 1.5.1
 - depends on multvals >= 3.8.0
 - new viki family "AnyWord" (see |viki-any-word|), which turns any word into a 
