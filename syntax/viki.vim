@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 02-Feb-2004.
-" @Revision: 0.120
+" @Last Change: 04-Mai-2004.
+" @Revision: 0.317
 
 if version < 600
   syntax clear
@@ -16,53 +16,50 @@ let b:VikiEnabled = 0
 VikiMinorModeMaybe
 let b:VikiEnabled = 2
 
-if b:vikiMarkupEndsWithNewline == 1
-    let s:markUpEndlineEnd  = '\|\n\{2,}'
-elseif b:vikiMarkupEndsWithNewline == 2
-    let s:markUpEndlineEnd  = ''
-else
-    let s:markUpEndlineEnd  = '\|\n'
-endif
+syn match vikiEscape /\\/ contained containedin=vikiEscapedChar
+syn match vikiEscapedChar /\\\_./ contains=vikiEscape,vikiChar
 
-" syn match vikiLiteral /\\["*_{}#|/\\]/
-" syn match vikiEscapedChars /[ "*_{}#|/\\]/
-syn match vikiEscape /\\/
-syn match vikiEscapedChar /\\[ "*_{}#|/\\\n]/ contains=vikiEscape
-
-exe "syn match vikiAnchor /^". b:vikiCommentStart ."\\?#[".g:vikiLowerCharacters."0-9]\\+/"
-syn match vikiMarkers /\([#?!+]\{3,3}\)/
+exe "syn match vikiAnchor /^". escape(b:vikiCommentStart, '\/.*^$~[]') .'\?\s*#'. b:vikiAnchorNameRx ."/"
+syn match vikiMarkers /\(\([#?!+]\)\2\{2,2}\)/
 syn match vikiSymbols /\(--\|!=\|==\+\|\~\~\+\|<-\+>\|<=\+>\|<\~\+>\|<-\+\|-\+>\|<=\+\|=\+>\|<\~\+\|\~\+>\|\.\.\.\)/
 
-exe 'syn region vikiComment start=/^\s*'. b:vikiCommentStart .'/ end=/$/ contains=ALL'
-exe 'syn region vikiString start=+"+ skip=+\\"+  end=+"'. s:markUpEndlineEnd .'+'
+syn match vikiBold /\(^\|\W\zs\)\*\(\\\*\|\w\)\{-1,}\*/
+syn region vikiContinousBold start=/\(^\|\W\zs\)\*\*[^ 	*]/ end=/\*\*\|\n\{2,}/ skip=/\\\n/
 
-let b:vikiHeadingStart = '^\*\+\s\+'
-" exe 'syn region vikiHeading start=/'. b:vikiHeadingStart .'/ end=/\n/ skip=/\\\n/ '
-exe 'syn region vikiHeading start=/'. b:vikiHeadingStart .'/ end=/\n/ contains=ALL'
+syn match vikiItalic /\(^\|\W\zs\)\/\(\\\/\|\w\)\{-1,}\//hs=s+1,he=e-1
+syn region vikiContinousItalic start=/\(^\|\W\zs\)\/\/[^ 	/]/hs=s+2 end=/\/\/\|\n\{2,}/he=e-2 skip=/\\\n/
 
-" syn match vikiList /^\s\+\([-+*]\|[0-9]\+\.\|[a-zA-Z]\.\|(\([0-9]\+\|[a-zA-Z]\))\)\ze\s/
-syn match vikiList /^\s\+\([-+*]\|[0-9]\+\.\|[a-zA-Z]\.\)\ze\s/
-" syn match vikiDescription /^\s\+.\{-1,}\s\(::\|\.\.\.\)\ze\s/
+syn match vikiUnderline /\(^\|\W\zs\)_\(\\_\|\w\)\{-1,}_/
+syn region vikiContinousUnderline start=/\(^\|\W\zs\)__[^ 	_]/ end=/__\|\n\{2,}/ skip=/\\\n/
+
+syn match vikiTypewriter /\(^\|\W\zs\)=\(\\=\|\w\)\{-1,}=/
+syn region vikiContinousTypewriter start=/\(^\|\W\zs\)==[^ 	=]/ end=/==\|\n\{2,}/ skip=/\\\n/
+
+syn cluster vikiTextstyles contains=vikiBold,vikiContinousBold,vikiItalic,vikiContinousItalic,vikiTypewriter,vikiContinousTypewriter,vikiUnderline,vikiContinousUnderline,vikiEscapedChar
+
+exe 'syn region vikiComment start=/^\s*'. escape(b:vikiCommentStart, '\/.*^$~[]') .'/ end=/$/ contains=ALL'
+
+syn region vikiString start=+"+ end=+"+ contains=@vikiTextstyles
+
+let b:vikiHeadingStart = '*'
+exe 'syn region vikiHeading start=/\V\^'. escape(b:vikiHeadingStart, '\') .'\+\s\+/ end=/\n/ contains=@vikiTextstyles'
+
+syn match vikiList /^\s\+\([-•+*#]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\ze\s/
 syn match vikiDescription /^\s\+.\{-1,}\s::\ze\s/
 
-" syn region vikiTableHead start=/^||\s/ end=/\s||$/ skip=/\\\n/
-" syn region vikiTableRow start=/^|\s/ end=/\s|$/ skip=/\\\n/
-syn match vikiTableHead /\(^\|\s\zs\)||\ze\(\s\+\|$\)/
-" \(^\|\s\zs\)|\(\s\{-1,}\|$\)/
-syn match vikiTableRow /\(^|\s\|\s\zs|\s\|\s|$\)/
-syn match vikiTableRuler /^[+|]-\+\([ 	+=-]\|\\\n\)\+-\+[+|]$/
+syn match vikiTableRowSep /||\?/ contained containedin=vikiTableRow,vikiTableHead
+syn match vikiTableHead /^||\s\(.\|\\\n\)\+\s||$/ contains=ALL transparent
+syn match vikiTableRow  /^|\s\(.\|\\\n\)\+\s|$/ contains=ALL transparent
 
-syn match vikiBold /\(^\|\s\zs\)\*\(\\\*\|[^ 	*]\)\{-1,}\*/
-" syn match vikiBold /\(\_^\|\s\zs\)\*\(\\\*\|\S\)\{-1,}\*/
-exe 'syn region vikiContinousBold start=/\(^\|\s\zs\)\*\*[^ 	*]/ end=/\*\*'. s:markUpEndlineEnd .'/ skip=/\\\n/'
-syn match vikiItalic /\(^\|\s\zs\)\/\(\\\/\|[^ 	/]\)\{-1,}\//hs=s+1,he=e-1
-exe 'syn region vikiContinousItalic start=/\(^\|\s\zs\)\/\/[^ 	/]/hs=s+2 end=/\/\/'. s:markUpEndlineEnd .'/he=e-2 skip=/\\\n/'
-syn match vikiUnderline /\(^\|\s\zs\)_\(\\_\|[^ 	_]\)\{-1,}_/
-exe 'syn region vikiContinousUnderline start=/\(^\|\s\zs\)__[^ 	_]/ end=/__'. s:markUpEndlineEnd .'/ skip=/\\\n/'
-syn match vikiTypewriter /\(^\|\s\zs\)=\(\\=\|[^ 	=]\)\{-1,}=/
-exe 'syn region vikiContinousTypewriter start=/\(^\|\s\zs\)==[^ 	=]/ end=/=='. s:markUpEndlineEnd .'/ skip=/\\\n/'
+" syn match vikiLayoutMarker /[/|%_^]/ containedin=vikiLayout contained
+" syn match vikiLayout /|\S.\{-}\S|/
+            " \ contains=vikiLayoutMarker,@vikiTextstyles,vikiEscape,vikiEscapedChar,vikiCommand
 
-syn region vikiCommand start=/{/ skip=/\(\\{\|\\}\|\\\n\)/ end=/}/ contains=vikiCommand
+syn region vikiCommand matchgroup=vikiCommandDelim start=/{[^:{}]\+:\?/ end=/}/ transparent
+
+syn match vikiOption /^\C#\([A-Z]\+\)\>.*$/
+syn region vikiRegion matchgroup=vikiCommandDelim 
+            \ start=/#\([A-Z][a-z]\+\>\|!!!\).\{-}<<\z(.\+\)$/ end=/^\z1$/ contains=ALL
 
 
 " Define the default highlighting.
@@ -96,19 +93,18 @@ if version >= 508 || !exists("did_viki_syntax_inits")
       let s:twfont = ""
   endif
  
-  " HiLink vikiEscapedChars Normal
+  HiLink vikiEscapedChars Normal
   exe "hi vikiEscape ctermfg=". s:cm2 ."grey guifg=". s:cm2 ."grey"
   exe "hi vikiHeading term=bold,underline cterm=bold gui=bold ctermfg=". s:cm1 ."Magenta guifg=".s:cm1."Magenta". s:hdfont
   exe "hi vikiList term=bold cterm=bold gui=bold ctermfg=". s:cm1 ."Cyan guifg=". s:cm1 ."Cyan"
   HiLink vikiDescription vikiList
-  hi vikiTableHead term=bold cterm=bold gui=bold ctermbg=Grey guibg=Grey
-  exe "hi vikiTableRow ctermbg=". s:cm2 ."Grey guibg=". s:cm2 ."Grey"
-  HiLink vikiTableRuler vikiTableRow
+  
+  exe "hi vikiTableRowSep term=bold cterm=bold gui=bold ctermbg=". s:cm2 ."Grey guibg=". s:cm2 ."Grey"
+  
   exe "hi vikiSymbols term=bold cterm=bold gui=bold ctermfg=". s:cm1 ."Red guifg=". s:cm1 ."Red"
   exe "hi vikiMarkers term=bold cterm=bold gui=bold ctermfg=". s:cm1 ."Red guifg=". s:cm1 ."Red ctermbg=yellow guibg=yellow"
   hi vikiAnchor term=italic cterm=italic gui=italic ctermfg=grey guifg=grey
   HiLink vikiComment Comment
-  " exe "hi vikiString ctermfg=". s:cm1 ."Green guifg=". s:cm1 ."Green"
   HiLink  vikiString String
   hi vikiBold term=bold cterm=bold gui=bold
   HiLink vikiContinousBold vikiBold
@@ -118,8 +114,15 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   HiLink vikiContinousUnderline vikiUnderline
   exe "hi vikiTypewriter term=underline ctermfg=". s:cm1 ."Grey guifg=". s:cm1 ."Grey". s:twfont
   HiLink vikiContinousTypewriter vikiTypewriter
-  exe "hi vikiCommand term=italic ctermfg=". s:cm1 ."Cyan guifg=". s:cm1 ."Cyan"
+  " hi vikiLayout term=standout cterm=standout gui=standout
+  HiLink vikiLayoutMarker PreProc
+  HiLink vikiCommandHead Statement
+  HiLink vikiCommandDelim Identifier
+ 
+  HiLink vikiOption Statement
+  HiLink vikiRegion Statement
   
   delcommand HiLink
 endif
 
+" vim: ff=unix

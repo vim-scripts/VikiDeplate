@@ -14,24 +14,37 @@ type |:VikiMinorMode| and all wiki names will be highlighted. If you press
 referred page.
 
 When invoked as a "minor" mode, viki is just an addon to other filetypes. If 
-you want to write a viki-only document, invoke viki using the command 
-|:VikiMode| or by setting |'filetype'| to "viki".
+you want to write a viki-only document, set |'filetype'| to "viki". The "full" 
+mode provides folding support, additional highlighting for headings, lists, 
+tables, textstyles etc.
 
 
 ================================================================================
                                                     *viki-installation*
 Installation~
 
-viki.zip consists of the following files: >
-
-    ftplugin/viki.vim
-    plugin/viki.vim
-    plugin/vikiLatex.vim
-    syntax/viki.vim
-    doc/viki.txt
-
 Extract viki.zip to your local vimfiles directory ($VIM/vimfiles/ or ~/.vim) 
-and run |:helptags| on that directory. Make sure to read |viki-customization|.
+and run |:helptags| on that directory.
+
+Customization:                                      *viki-customization*
+It's probably a good idea to check the values of the following variables:
+    - |g:vikiTypewriterFont| (see |viki-textstyles|)
+    - |g:vikiHeadingFont| (see |viki-headings|)
+    - |g:vikiUpperCharacters| and |g:vikiLowerCharacters|
+as well as:
+    - |g:vikiUseParentSuffix| (see |viki-names|)
+    - |vikiNameTypes|
+
+Additionally, you can use the following variables to change viki's behaviour:
+
+If the variables b:getVikiLink or b:getExtVikiLink exist, their values are 
+used as function names for returning the current viki name's definition. A 
+viki definition is a "multvalue" (see multvals.vim, vimscript #171) of the 
+three elements name, destination, anchor with g:vikiDefSep as the separator.
+
+If the variables b:editVikiPage or b:createVikiPage exist, their values are 
+interpreted as _command_ names for editing readable or creating new wiki 
+pages.
 
 
 ===============================================================================
@@ -41,10 +54,11 @@ Requirements~
 - multvals.vim (vimscript #171)
 
 
-Optional Enhancments~
+Optional Enhancements~
 
-- genutils.vim (see |g:vikiSaveHistory|)
-- kpsewhich (not a vim plugin) for LaTeX support
+- genutils.vim (vimscript #197 for saving back references; but see 
+  |g:vikiSaveHistory|)
+- kpsewhich (not a vim plugin :-) for LaTeX support
 
 
 ================================================================================
@@ -62,7 +76,7 @@ A viki name is either:
             VikiName#anchor
 
             NOTE: A simple viki name may include characters from 
-            g:vikiUpperCharacters and g:vikiLowerCharacters.
+            |g:vikiUpperCharacters| and |g:vikiLowerCharacters|.
 
         b. some text between "[-" and "-]"
             [-name-]
@@ -106,6 +120,8 @@ A viki name is either:
             [[destination]]
             [[destination][name]]
             [[destination#anchor][name]]
+            [[#anchor]]
+            [[#anchor][name]]
 
         NOTE: The destination name is taken literally, i.e. variables like 
         |g:vikiUseParentSuffix| or |b:vikiNameSuffix| have no effect.
@@ -123,10 +139,10 @@ A viki name is either:
         will be replaced with $HOME.
 
                                                     *viki-urls*
-    3. an URL (see g:vikiUrlRx)
+    3. an URL (see |g:vikiUrlRx|)
         It is assumed that these URLs should be opened with an external 
         program; this behaviour can be changed by redefining the function 
-        |VikiOpenSpecialProtocol(url)|.
+        |VikiOpenSpecialProtocol()|.
 
 Adding #[a-z0-9]\+ to the wiki name denotes a reference to a specific anchor.  
 Examples for wiki names referring to an anchor: >
@@ -147,14 +163,14 @@ file. If |b:commentStart| is not defined, the EnhancedCommentify-variables or
     - Text file, b:commentStart is undefined
       |#anchor
 
-NOTE: I guess this only works for single line comments?
-
 NOTE: If "#" is the comment character (as in ruby), a space should follow the
 comment character in order to distinguish comments from anchors.
 
 NOTE: In "full" viki mode (when invoked via VikiMode) comments are marked 
 with "%" by default (see g:vikiCommentStart). An anchor has thus to be 
 written as in the LaTeX example.
+
+NOTE: |deplate| attaches an anchor to the previous element (e.g. |viki-tables|).
 
 
 ================================================================================
@@ -167,11 +183,6 @@ enough to edit and work with files in emacs-wiki markup, but in some aspects
 it's more restrictive. Unfortunately, as there is currently no 
 html-translator/exporter for this markup, it's quite useless for the moment.
 But it looks nice on the screen.
-
-NOTE: At present, the markup is defined for "one-line paragraphs" (set 
-textwidth=0).
-
-You could type :set ft=viki<cr> now to find out what it would look like.
 
 
                                                     *viki-headings*
@@ -195,6 +206,14 @@ Lists: (indented)~
                 1. Item 1
                     a. Item a
                     B. Item B
+        # Item
+            #. Item 1
+            #. Item 2
+                ?. Item A
+                ?. Item B
+
+    NOTE: "#" (unordered lists) and "#." (ordered lists) are the preferred 
+    markers.
 
 
                                                     *viki-descriptions*
@@ -204,10 +223,10 @@ Descriptions: (indented)~
 
                                                     *viki-tables*
 Tables~
-|-                  -|
 || Head || Category ||
 |  Row  |  Value     |
-|-                  -|
+#CAPTION: This Table
+#label
 
     NOTE: Rows can span more than one line by putting a backslash ('\') at 
     the end of the line.
@@ -232,17 +251,17 @@ Strings~
 
                                                     *viki-textstyles*
 Textstyles~
-*bold*,       *bold\*asterisk*,         **continuous bold**
-/italic/,     /italic\/slash/,          //continuous italic//
-_underlined_, _underlined\_underscore_, __continuous underline__
-=typewriter=, =typewriter\=equal=,      ==continuous typewriter==
+*bold*,       **continuous bold**
+/italic/,     //continuous italic//
+_underlined_, __continuous underline__
+=typewriter=, ==continuous typewriter==
 
     NOTE: There must not by a whitespace after the opening mark.
 
-    NOTE: For the word styles, there must be a whitespace before the opening 
-    mark, i.e. a/b/c will be highlighted as normal text -- it won't be 
-    highlighted. You could use the continuous markup for putting the "b" in the 
-    example in italic.
+    NOTE: For the word styles, there must be a non-word character (|/\W|) 
+    before the opening mark, i.e. a/b/c will be highlighted as normal text -- 
+    it won't be highlighted. You could use the continuous markup for putting 
+    the "b" in the example in italic.
 
     NOTE: If |g:vikiTypewriterFont| is defined, this font will be used to 
     highlight text in typewriter style.
@@ -255,11 +274,82 @@ Comments (whole lines)~
 %Comment
 
 
-                                                    *viki-embedded-commands*
+                                                    *viki-regions*
+Regions~
+#Type [OPTIONS] <<EndOfRegion
+Text ...
+EndOfRegion
+
+For a list of supported regions see the |deplate| documentation.
+
+
+                                                    *viki-sharp-commands*
+One-line commands~
+#COMMAND [OPTIONS]: ARGS
+
+OPTIONS have the form
+    - OPTION! ... set option to true
+    - OPTION=VALUE
+    - the characters "!" and "=" have to be escaped with a backslash
+
+Commands are applied only if the option "fmt" isn't given or if it matches the 
+formatter regexp.
+
+Short list of available COMMANDS "COMMAND" (see also |deplate|):
+    - INC: INCLUDED FILENAME
+    - FIG [here!|top!|bottom!]: FILENAME
+    - CAP [above!|below!]: TEXT
+    - TITLE: TEXT
+    - AUTHOR: TEXT
+    - AUTHORNOTE: TEXT
+    - DATE: [TEXT|now|today]
+    - MAKETITLE [page!]
+    - LIST [page!]: [contents|tables|figures|index]
+    - PAGE
+
+It depends on the formatter if these options have any effect.
+    - DOC ... document options
+    - OPT ... element options (applies to the previous element)
+
+
+                                                   *viki-macros*
 Curly braces~
-Curly braces should be escaped with a backslash -- i.e., \{ and \}. If I ever 
-find the time to write a conversion tool, curly braces will be used for 
-user-defined commands/functions.
+Curly braces should be escaped with a backslash (i.e., \{ and \}), as they 
+usually mark macros: >
+
+    {COMMAND [OPTIONS]: ARGS...}
+<
+Short list of available macros (see also |deplate|):
+    - {fn: ID}
+        - inserts a footnote as defined by in a Fn or Footnote region. 
+        - output depends on the formatter
+        - Example: >
+            Foo bar{fn: x} foo bar.
+
+            #Fn x <<EOF
+                Bla bla.
+            EOF
+<   - {cite: ID}
+        - output depends on the formatter
+    - {date: [format string|now|today]}
+        - the format string uses ruby's strftime method.
+    - {ins: LITERALLY INSERTED TEXT}
+        - Example: {ins fmt=html: &lt;&lt;}
+    - {doc: ID}
+        - access document options, e.g. {opt: author}
+    - {opt: ID}
+        - access element (paragraph, table etc.) options
+    - {ruby [alt=ALTERNATIVE OUTPUT]: RUBY CODE}
+        - if the evaluation of ruby code is disabled, the text given in the 
+          alt option or an empty string will be inserted
+        - a sequence of ruby commands must be separated by semicolons
+
+Common options:
+    - fmt=FORMATTER, nofmt=UNMATCHED FORMATTER
+
+NOTE: Macros cannot cross paragraph borders, i.e., they must not contain empty 
+lines. Using newlines in a macro argument is useless, as the macro text will 
+be collapsed to one single line.
 
 
                                                     *viki-backslash*
@@ -301,9 +391,13 @@ Commands~
                                                     *:VikiMinorMode*
 - VikiMinorMode
 - VikiMinorModeMaybe (don't complain when Viki is already enabled)
+  NOTE: Be aware that we cannot highlight a reference if the text is embedded 
+  in syntax group that doesn't allow inclusion of arbitrary syntax elemtents.
 
                                                     *:VikiMode*
 - VikiMode (do additional highlighting)
+  Basically the same as: >
+    set ft=viki
 - VikiModeMaybe (don't complain when Viki is already enabled)
 
                                                     *:VikiFind*
@@ -342,12 +436,30 @@ Functions~
   limited to one.
 
 - VikiOpenSpecialFile(filename)                     *VikiOpenSpecialFile()*
-  Handles filenames that match |vikiSpecialFiles|. Under MS Windows opening 
-  the file is delegated to the explorer. On other systems, this function 
-  currently has to be redefined by the user.
+    Handles filenames that match |vikiSpecialFiles|.
+    If g:vikiOpenFileWith_{SUFFIX} is defined, it contains a command 
+    definition for opending files of this type. "%{FILE}" is replaced with the 
+    file name ("%%" = "%") and the resulting string is executed. Example: >
+
+        let g:vikiOpenFileWith_html = '!firefox %{FILE}'
+
+<   The contents of variable g:vikiOpenFileWith_ANY will be used as fallback
+    command. Under Windows, g:vikiOpenFileWith_ANY defaults to "silent !cmd /c 
+    start".
+    All suffixes are translated to lower case.
 
 - VikiOpenSpecialProtocol(url)                      *VikiOpenSpecialProtocol()*
-  Same issues as with |VikiOpenSpecialFile()|.
+    Handles filenames that match |vikiSpecialProtocols|.
+    If g:vikiOpenUrlWith_{PROTOCOL} is defined, it contains a command definition 
+    for opending urls of this type. "%{URL}" is replaced with the url ("%%" = 
+    "%") and the resulting string is executed. Example: >
+
+        let g:vikiOpenUrlWith_mailto = '!thunderbird -compose %{URL}'
+
+<   The contents of variable g:vikiOpenUrlWith_ANY will be used as fallback
+    command. Under Windows, g:vikiOpenUrlWith_ANY defaults to "silent 
+    !rundll32 url.dll ...".
+    All protocol names are translated to lower case.
 
 - VikiDefineMarkup(mode)                            *VikiDefineMarkup()*
 - VikiDefineHighlighting(mode)                      *VikiDefineHighlighting()*
@@ -358,7 +470,12 @@ Functions~
 Variables~
 
 Simple Viki Names [2]:                              *viki-vars-simple-names*
-- b:vikiLowerCharacters, b:vikiUpperCharacters
+                                                    *g:vikiLowerCharacters* 
+                                                    *g:vikiUpperCharacters*
+- g:vikiLowerCharacters, g:vikiUpperCharacters, b:vikiLowerCharacters, 
+  b:vikiUpperCharacters
+    These default to "a-z" and "A-Z" respectively; "international" users 
+    should set these variables in their vimrc file to fit their needs
 - b:vikiAnchorMarker
 - b:vikiSimpleNameRx, b:vikiSimpleNameSimpleRx[1]
 - b:vikiSimpleNameNameIdx, b:vikiSimpleNameDestIdx, b:vikiSimpleNameAnchorIdx
@@ -374,6 +491,11 @@ URLs [2]:                                           *viki-vars-urls*
 
 NOTE: [1] The same as *Rx variables but with less groups.
 NOTE: [2] These variables are defined by |VikiSetupBuffer()|.
+
+- b:vikiAnchorRx 
+    If this variable exists, the string "%{ANCHOR}" will be replaced with the 
+    search text. The expression has to conform to the very nomagic |/\V| 
+    syntax.
 
 
 File handling:
@@ -404,10 +526,6 @@ Markup:
         - b:ECcommentOpen
         - matchstr(&commentstring, "^\\zs.*\\ze%s")
     In "full" viki mode it's set to |g:vikiCommentStart|.
-- g:vikiMarkupEndsWithNewline                       *g:vikiMarkupEndsWithNewline*
-    Default value: 1
-    Defines if |viki-strings| and |viki-textstyles| end at one (=1) or two (=2) 
-    newline characters. Setting this value to 0 to disable this feature.
 - g:vikiTypewriterFont                              *g:vikiTypewriterFont*
     See |viki-textstyles|.
 - g:vikiHeadingFont                                 *g:vikiHeadingFont*
@@ -442,26 +560,10 @@ Etc:
     If genutils.vim is installed, the history data will be saved in 
     |viminfo-file|. Like most of this plugin, this feature is _experimental_
     and is turned off by default.
-
-
-Customization:                                      *viki-customization*
-It's probably a good idea to check the values of the following variables:
-    - |g:vikiTypewriterFont| (see |viki-textstyles|)
-    - |g:vikiHeadingFont| (see |viki-headings|)
-as well as:
-    - |g:vikiUseParentSuffix| (see |viki-names|)
-    - |vikiNameTypes|
-
-Additionally, you can use the following variables to change viki's behaviour:
-
-If the variables b:getVikiLink or b:getExtVikiLink exist, their values are 
-used as function names for returning the current viki name's definition. A 
-viki definition is a "multvalue" (see multvals.vim, vimscript #171) of the 
-three elements name, destination, anchor with g:vikiDefSep as the separator.
-
-If the variables b:editVikiPage or b:createVikiPage exist, their values are 
-interpreted as _command_ names for editing readable or creating new wiki 
-pages.
+- g:vikiExplorer                                    *g:vikiExplorer*
+    Default: "Sexplore"
+    If a viki name points to a directory, we use this command for viewing the 
+    directory contents.
 
 
 ================================================================================
@@ -469,46 +571,113 @@ pages.
 Highlighting~
 
 Viki.vim defines several new highlight groups. Precaution is taken to select 
-different colours depending on the background, but colour schemes are ignored.
+different colours depending on the background, but colour schemes are ignored. 
+The colors are tested using color scheme with a white background.
 
-- vikiHyperLink
-- vikiHeading
-- vikiList
-- vikiTableHead
-- vikiTableRow
-- vikiSymbols
-- vikiMarkers
-- vikiAnchor
-- vikiString
-- vikiBold
-- vikiItalic
-- vikiUnderline
-- vikiTypewriter
-- vikiCommand
+    - vikiHyperLink
+    - vikiHeading
+    - vikiList
+    - vikiTableHead
+    - vikiTableRow
+    - vikiSymbols
+    - vikiMarkers
+    - vikiAnchor
+    - vikiString
+    - vikiBold
+    - vikiItalic
+    - vikiUnderline
+    - vikiTypewriter
+    - vikiCommand
 
 
 ================================================================================
-                                                    *viki-latex*
+                                                    *viki-compile*
+Viki Compile~
+
+The compile plugin simply defines |deplate| as the current file's |makeprg|. 
+It also provides basic support for |deplate|'s error messages.
+
+
+================================================================================
+                                                    *viki-latex* *vikiLatex*
 Viki LaTeX~
 
-NOTE: This is hardly tested.
+The archiv includes an experimental add-on for using LaTeX commands as simple 
+wiki names. Among the commands that are to some degree used as hyperlinks or 
+anchors:
 
-The archiv includes an experimental add-on for using LaTeX commands like
-\include, \input, and \usepackage as simple wiki names. Simple viki names
-(including Interviki, CamelCase, and quoted viki names) are disabled -- as
-they wouldn't be of much use in a LaTeX document anyway.
+    - \viki[anchor]{name]
+ 	- \input
+ 	- \include
+ 	- \usepackage
+ 	- \psfig
+ 	- \includegraphics
+    - \bibliopgraphy
+    - \label (as anchors)
+    - \ref (in the current file only)
+
+Limitations: There must not be spaces between between the leading backslash, 
+the command name, and its arguments. A command must not span several lines.
+
+Simple viki names (including Interviki, CamelCase, and quoted viki names) are 
+disabled -- as they wouldn't be of much use in a LaTeX document anyway.
 
 This plugin also highlights a hypothetical \viki[anchor]{name} command, which
-could be defined as: \newcommand{\viki}[2][]{#1}
+could be defined as: \newcommand{\viki}[2][]{#2}
 
+If b:vikiFamily is set to "LaTeX", then calling |:VikiMinorMode| will use 
+these commands instead of normal viki names. This change can be made permanent 
+by adding this line to your vimrc file: >
+    au FileType tex let b:vikiFamily="LaTeX"
+<
                                                     *:VikiMinorModeLaTeX*
-LaTeX support is switched on with the command :VikiMinorModeLaTeX. This
+LaTeX support is switched on with the command :VikiMinorModeLaTeX. This 
+command sets b:vikiFamily to "LaTeX" and calls |:VikiMinorMode|. This
 command relies on the external kpsewhich tool, which has to be installed on
-your machine.
+your computer.
+
+                                                    *vikiLatex-UserCommands*
+You can extend the list of supported commands by listing your commands in
+g:vikiLaTeXUserCommands and by defining a corresponding function called 
+VikiLaTeX_{YourCommand}(args, opts). VikiLaTeX assumes that a command looks 
+like this: \latexcommand[opts]{args}. This function should return a string 
+that defines the variable dest (=destination file) as well as, optionally, 
+anchor and name -- see |:return| for an explanation of how this works. A 
+simple minded example: >
+
+    let g:vikiLaTeXUserCommands = 'other\|self'
+
+    fun! VikiLaTeX_other(args, opts)
+        return 'let dest="'.a:args.'.tex" | let anchor="'.opts.'"'
+    endfun
+
+    fun! VikiLaTeX_self(args, opts)
+        return 'let dest="'.g:vikiSelfRef.'" | let anchor="'.opts.'"'
+    endfun
+
+
+================================================================================
+                                                    *deplate*
+Deplate~
+
+deplate is a ruby script/library that converts viki markup to:
+
+    - html
+    - htmlslides
+    - htmlindex
+    - latex
+
+Download the latest version from http://sourceforge.net/projects/deplate/.
+
+deplate's markup is not 100% identical with the standard viki mode's one. 
+E.g., it doesn't support underline, italic markup. deplate sometimes failes 
+with cryptic error messages and it doesn't always do what would expect from 
+it. On the other hand, it provides for inline LaTeX code, footnotes, 
+references, an autogenerated index etc.
 
 
 --
 (the following is adapted from latex-suite.txt)
-vim:ft=help:fdm=expr:tw=78
+vim:ft=help:fdm=expr:tw=78:ff=unix
 vim:foldexpr=getline(v\:lnum-2)=~"=\\\\{80,}"?"a1"\:(getline(v\:lnum+1)=~"=\\\\{80,}"?"s1"\:"=")
 vim:foldtext=v\:folddashes.substitute(getline(v\:foldstart),"\\\\s*\\\\*.*","","")
