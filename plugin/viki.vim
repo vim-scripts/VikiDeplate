@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 01-Feb-2004.
-" @Revision: 1.0.0
+" @Last Change: 05-Feb-2004.
+" @Revision: 1.0.5
 " 
 " Short Description:
 " This plugin adds wiki-like hypertext capabilities to any document. Just type 
@@ -47,7 +47,7 @@ if &cp || exists("s:loaded_viki")
 endif
 let s:loaded_viki = 1
 
-let g:vikiDefNil  = '*'
+let g:vikiDefNil  = ''
 let g:vikiDefSep  = '|'
 
 let s:vikiSelfEsc = '\'
@@ -300,7 +300,7 @@ endfun
 
 "state ... 0,  +/-1, +/-2
 fun! VikiMinorMode(state)
-    if exists("b:VikiEnabled")
+    if exists("b:VikiEnabled") && b:VikiEnabled
         if a:state == 0
             throw "Viki can't be disabled (not yet)."
         else
@@ -577,6 +577,7 @@ endfun
 fun! VikiMakeDef(name, dest, anchor)
     if a:name =~ g:vikiDefSep || a:dest =~ g:vikiDefSep || a:anchor =~ g:vikiDefSep
         throw "Viki: A viki definition must not include ".g:vikiDefSep
+                    \ .": ".a:name.", ".a:dest.", ".a:anchor
     else
         let arr = MvAddElement("",  g:vikiDefSep, <SID>MakeVikiDefPart(a:name))
         let arr = MvAddElement(arr, g:vikiDefSep, <SID>MakeVikiDefPart(a:dest))
@@ -641,7 +642,7 @@ fun! VikiExpandSimpleName(dest, name, suffix)
             let dest = a:dest ."/". a:name ."." . sfx
         endif
     else
-        let dest = a:dest ."/". a:name . a:suffix
+        let dest = a:dest ."/". a:name . (a:suffix == "*|*"? "" : a:suffix)
     endif
     return dest
 endfun

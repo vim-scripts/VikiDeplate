@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 01-Feb-2004.
-" @Revision: 0.117
+" @Last Change: 02-Feb-2004.
+" @Revision: 0.120
 
 if version < 600
   syntax clear
@@ -12,6 +12,7 @@ elseif exists("b:current_syntax")
 endif
 
 " This command sets up buffer variables and adds some basic highlighting.
+let b:VikiEnabled = 0
 VikiMinorModeMaybe
 let b:VikiEnabled = 2
 
@@ -32,7 +33,7 @@ exe "syn match vikiAnchor /^". b:vikiCommentStart ."\\?#[".g:vikiLowerCharacters
 syn match vikiMarkers /\([#?!+]\{3,3}\)/
 syn match vikiSymbols /\(--\|!=\|==\+\|\~\~\+\|<-\+>\|<=\+>\|<\~\+>\|<-\+\|-\+>\|<=\+\|=\+>\|<\~\+\|\~\+>\|\.\.\.\)/
 
-exe 'syn region vikiComment start=/^\s*'. b:vikiCommentStart .'/ end=/$/ contains=vikiAnchor'
+exe 'syn region vikiComment start=/^\s*'. b:vikiCommentStart .'/ end=/$/ contains=ALL'
 exe 'syn region vikiString start=+"+ skip=+\\"+  end=+"'. s:markUpEndlineEnd .'+'
 
 let b:vikiHeadingStart = '^\*\+\s\+'
@@ -121,6 +122,4 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   
   delcommand HiLink
 endif
-
-" let b:current_syntax = "viki"
 

@@ -171,6 +171,8 @@ But it looks nice on the screen.
 NOTE: At present, the markup is defined for "one-line paragraphs" (set 
 textwidth=0).
 
+You could type :set ft=viki<cr> now to find out what it would look like.
+
 
                                                     *viki-headings*
 Headings~
@@ -204,7 +206,7 @@ Descriptions: (indented)~
 Tables~
 |-                  -|
 || Head || Category ||
-|  Row   | Value     |
+|  Row  |  Value     |
 |-                  -|
 
     NOTE: Rows can span more than one line by putting a backslash ('\') at 
@@ -213,7 +215,7 @@ Tables~
 
                                                     *viki-symbols*
 Symbols~
-<-, ->, <=, =>, <~, ~>, <->, <=>, <~>, ==, !=, ~~, ...
+<-, ->, <=, =>, <~, ~>, <->, <=>, <~>, !=, ~~, ..., --, ==
 
 
                                                     *viki-markers*
@@ -257,7 +259,7 @@ Comments (whole lines)~
 Curly braces~
 Curly braces should be escaped with a backslash -- i.e., \{ and \}. If I ever 
 find the time to write a conversion tool, curly braces will be used for 
-commands/functions.
+user-defined commands/functions.
 
 
                                                     *viki-backslash*
@@ -326,7 +328,7 @@ Functions~
      	whatever ... return whatever
     ignoreSyntax: If there isn't a viki syntax group under the cursor:
         0 ... no viki name found
-        1 ... try to find a viki name matching a the viki regexp
+        1 ... look if there is a viki name under cursor anyways
 
 - VikiFindAnchor(anchor)                            *VikiFindAnchor()*
 
@@ -399,7 +401,7 @@ Markup:
 - b:vikiCommentStart                                *b:vikiCommentStart*
     In minor mode this variable is set to either:
         - b:commentStart
-        - b:EnhCommentifyCommentOpen
+        - b:ECcommentOpen
         - matchstr(&commentstring, "^\\zs.*\\ze%s")
     In "full" viki mode it's set to |g:vikiCommentStart|.
 - g:vikiMarkupEndsWithNewline                       *g:vikiMarkupEndsWithNewline*
@@ -429,10 +431,10 @@ Etc:
     Default value: "csSeui"
         s ... Simple viki name 
             c ... CamelCase 
-            S ... Simple quoted viki name
+            S ... Simple, quoted viki name
+            i ... InterViki
         e ... Extended viki name
         u ... URL
-        i ... InterViki
     Disable certain types of viki names globally or for a single buffer.
     (experimental, doesn't fully work yet)
 - g:vikiSaveHistory                                 *g:vikiSaveHistory*
@@ -493,10 +495,11 @@ NOTE: This is hardly tested.
 
 The archiv includes an experimental add-on for using LaTeX commands like
 \include, \input, and \usepackage as simple wiki names. Simple viki names
-(including Interviki, CamelCase, and quoted viki names) are disabled.
+(including Interviki, CamelCase, and quoted viki names) are disabled -- as
+they wouldn't be of much use in a LaTeX document anyway.
 
-This also highlights a hypothetical \viki{name} command, which could be
-defined as: \newcommand{\viki}[1]{#1}
+This plugin also highlights a hypothetical \viki[anchor]{name} command, which
+could be defined as: \newcommand{\viki}[2][]{#1}
 
                                                     *:VikiMinorModeLaTeX*
 LaTeX support is switched on with the command :VikiMinorModeLaTeX. This
@@ -505,7 +508,7 @@ your machine.
 
 
 --
-(the following is taken from latex-suite.txt)
+(the following is adapted from latex-suite.txt)
 vim:ft=help:fdm=expr:tw=78
-vim:foldexpr=getline(v\:lnum-1)=~"=\\\\{80,}"?"a1"\:(getline(v\:lnum+1)=~"=\\\\{80,}"?"s1"\:"=")
+vim:foldexpr=getline(v\:lnum-2)=~"=\\\\{80,}"?"a1"\:(getline(v\:lnum+1)=~"=\\\\{80,}"?"s1"\:"=")
 vim:foldtext=v\:folddashes.substitute(getline(v\:foldstart),"\\\\s*\\\\*.*","","")
