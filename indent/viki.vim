@@ -3,8 +3,8 @@
 " @Website:     http://members.a1.net/t.link/
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     16-Jän-2004.
-" @Last Change: 25-Jän-2005.
-" @Revision: 0.181
+" @Last Change: 05-Feb-2005.
+" @Revision: 0.189
 
 if exists("b:did_indent") || exists("g:vikiNoIndent")
     finish
@@ -33,14 +33,6 @@ fun! VikiGetIndent()
     let ind  = indent(lnum)
     let line = getline(lnum)      " last line
     
-    " Do not change indentation of:
-    "   - commented lines
-    "   - headings
-    if line =~ '^\(\s*%\|\*\)'
-        " echom "DBG comment or heading"
-        return ind
-    endif
-
     let cnum  = v:lnum
     let cind  = indent(cnum)
     
@@ -71,6 +63,15 @@ fun! VikiGetIndent()
         let descRx = '^\s\+.\{-1,}\s::\s'
         
         let cline = getline(cnum) " current line
+        
+        " Do not change indentation of:
+        "   - commented lines
+        "   - headings
+        if cline =~ '^\(\s*%\|\*\)'
+            " echom "DBG comment or heading: ". cline
+            return ind
+        endif
+
 
         let clList = matchend(cline, listRx)
         let clDesc = matchend(cline, descRx)

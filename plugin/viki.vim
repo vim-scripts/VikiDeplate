@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 26-Jän-2005.
-" @Revision: 1.6.0.26
+" @Last Change: 05-Feb-2005.
+" @Revision: 1.6.1.4
 "
 " vimscript #861
 "
@@ -136,7 +136,7 @@ if !exists("g:vikiOpenUrlWith_mailbox") "{{{2
         exec <SID>DecodeFileUrl(strpart(a:url, 10))
         let idx = matchstr(args, 'number=\zs\d\+$')
         if filereadable(filename)
-            call <SID>VikiOpenLink(filename, "", 0, "go ".idx)
+            call VikiOpenLink(filename, "", 0, "go ".idx)
         else
             throw "Viki: Can't find mailbox url: ".filename
         endif
@@ -148,7 +148,7 @@ if !exists("g:vikiOpenUrlWith_file") "{{{2
     fun! VikiOpenFileUrl(url) "{{{3
         exec <SID>DecodeFileUrl(strpart(a:url, 6))
         if filereadable(filename)
-            call <SID>VikiOpenLink(filename, anchor)
+            call VikiOpenLink(filename, anchor)
         else
             throw "Viki: Can't find file url: ".filename
         endif
@@ -850,15 +850,15 @@ endfun
 
 fun! VikiSubstituteArgs(str, ...) "{{{3
     let i  = 1
-    let rv = a:str
+    let rv = escape(a:str, '\')
     while a:0 >= i
         exec "let lab = a:". i
         exec "let val = a:". (i+1)
-        let rv = substitute(rv, '\C\(^\|[^%]\)\zs%{'. lab .'}', val, "g")
+        let rv = substitute(rv, '\C\(^\|[^%]\)\zs%{'. lab .'}', escape(val, '\'), "g")
+        let rv = escape(rv, '\')
         let i = i + 2
     endwh
     let rv = substitute(rv, '%%', "%", "g")
-    echomsg rv
     return rv
 endfun
 
@@ -882,7 +882,7 @@ fun! VikiFindAnchor(anchor) "{{{3
     endif
 endfun
 
-fun! <SID>VikiOpenLink(filename, anchor, ...) "{{{3
+fun! VikiOpenLink(filename, anchor, ...) "{{{3
     let create  = a:0 >= 1 ? a:1 : 0
     let postcmd = a:0 >= 2 ? a:2 : ""
     let winNr   = a:0 >= 3 ? a:3 : 0
@@ -1008,7 +1008,7 @@ fun! <SID>VikiFollowLink(def, ...) "{{{3
                         \ !(dest =~ g:vikiSpecialFilesExceptions))
                 call VikiOpenSpecialFile(dest)
             elseif filereadable(dest)                 "reference to a local, already existing file
-                call <SID>VikiOpenLink(dest, anchor, 0, "", winNr)
+                call VikiOpenLink(dest, anchor, 0, "", winNr)
             elseif bufexists(dest)
                 exec "buffer ". dest
             elseif isdirectory(dest)
@@ -1017,7 +1017,7 @@ fun! <SID>VikiFollowLink(def, ...) "{{{3
                 let ok = input("File doesn't exists. Create '".dest."'? (Y/n) ", "y")
                 if ok != "" && ok != "n"
                     let b:vikiCheckInexistent = line(".")
-                    call <SID>VikiOpenLink(dest, anchor, 1)
+                    call VikiOpenLink(dest, anchor, 1)
                 endif
             endif
         endif
@@ -1433,17 +1433,19 @@ fun! VikiFindAnyWord(flag) "{{{3
 endfun
 
 
-finish
+finish "{{{1
 _____________________________________________________________________________________
 
 * To Do
-
-- handle commands and macros: #INCLUDE, #IMG, #WITH, {ref}, {label}
-- don't know how to deal with viki names spanning several lines
+- don't know how to deal with viki names that span several lines
 - ...
 
 
 * Change Log
+1.6.1
+- removed forgotten debug message
+- fixed indentation bug
+
 1.6
 - b:vikiInverseFold: Inverse folding of subsections
 - support for some regions/commands/macros: #INC/#INCLUDE, #IMG, #Img 
@@ -1457,7 +1459,7 @@ simple viki names
 - made some script local functions global so that it should be easier to 
 integrate viki with other plugins
 - fixed moving cursor on <SID>VikiMarkInexistent()
-- fixed type in b:VikiEnabled, which should be b:vikiEnabled (thanks to Ned 
+- fixed typo in b:VikiEnabled, which should be b:vikiEnabled (thanks to Ned 
 Konz)
 
 1.5.2

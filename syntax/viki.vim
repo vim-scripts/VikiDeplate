@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 26-Jän-2005.
-" @Revision: 0.455
+" @Last Change: 05-Feb-2005.
+" @Revision: 0.456
 
 if version < 600
   syntax clear
@@ -13,7 +13,6 @@ endif
 
 " This command sets up buffer variables and adds some basic highlighting.
 let b:vikiEnabled = 0
-" if exists("b:vikiFamily") | echom "DBG ". b:vikiFamily | endif
 call VikiDispatchOnFamily("VikiMinorMode", -1)
 let b:vikiEnabled = 2
 

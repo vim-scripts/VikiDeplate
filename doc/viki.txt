@@ -124,11 +124,26 @@ It's probably a good idea to check the values of the following variables:
 
 You might also need to configure some external programs (use the variables 
 g:vikiOpenUrlWith_{PROTOCOL} and g:vikiOpenFileWith_{SUFFIX}) like in this 
-example: 
->
+example: >
+
     let g:vikiOpenUrlWith_mailto = 'thunderbird -compose %{URL}'
     let g:vikiOpenFileWith_html  = "silent !firefox %{FILE}"
     let g:vikiOpenFileWith_ANY   = "silent !start %{FILE}"
+
+This way, if you had, e.g., pdftotext (from the xpdf distribution) installed, 
+you could make viki to open references to pdf files right in VIM: >
+
+    fun! ConvertPDF()
+        if !exists("b:convertedPDF")
+            exec "cd ". expand("%:p:h")
+            exec "%!pdftotext ". expand("%:t") ." -"
+            :%!par 72w
+            cd -
+            setlocal noswapfile buftype=nowrite
+            let b:convertedPDF = 1
+        endif
+    endf
+    let g:vikiOpenFileWith_pdf = 'call VikiOpenLink("%{FILE}", "", 1)|silent call ConvertPDF()'
 
 Later on, you probably want to define some intervikis. A |interviki| is a 
 shortcut to a different viki directory/namespace, so that you have to care 
