@@ -37,6 +37,33 @@ support, syntax highlighting (for headings, lists, tables, textstyles etc.),
 and additional key bindings (i.e., you can press <c-tab> or <s-c-tab> to move 
 the cursor to the next/previous viki name).
 
+BUT HEY, WHAT IS A WIKI ANYWAY:
+Among the vast amount of possible definitions, I prefer this one, which is my 
+own anyway :-): a wiki is a simple way of creating hypertexts. In its basic 
+form creating a hyperlink is as easy as writing a word in CamelCase (although 
+this sometimes turn out to be more annoying than useful) or by a rather 
+minimalist markup -- in the case of viki, this would be [[destination]] or 
+[-destination-].
+
+You begin by creating a directory where your wiki files should go to and by 
+creating a wiki index -- a master file that contains references to sub-pages. 
+After a while you end up with many small, tightly interlinked files/notes.
+
+Wikis also come with a rather subtle markup. Here is a simple comparison of 
+two examples of LaTeX and viki markup so that you get the idea of what it 
+looks like:
+
+LaTeX: \section{Title}
+Viki:  * Title
+
+LaTeX: \emph{text}
+Viki:  __text__
+
+And some wikis provide tools for translating this markup to other formats 
+(like viki does in the form of the "deplate" program, which can translate viki 
+markup to LaTeX, HTML, and Docbook). Unfortunately, about every wiki has its 
+own markup. 
+
 
 ================================================================================
                                                     *viki-installation*
@@ -46,7 +73,7 @@ Extract viki.zip to your local vimfiles directory (see also
 |add-global-plugin|) so that you get: >
 
     (Linux etc.) $HOME/.vim/
-    (Windows) $VIM/vimviles/
+    (Windows) $VIM/vimfiles/
         compiler/  doc/  etc/ ftplugin/  plugin/  syntax/
 
 These directories are used for installing user-specific plugins. It's possible 
@@ -103,7 +130,7 @@ example:
     let g:vikiOpenFileWith_html  = "silent !firefox %{FILE}"
     let g:vikiOpenFileWith_ANY   = "silent !start %{FILE}"
 
-Later on, you probably want to define some intervikis. A |viki-interviki| is a 
+Later on, you probably want to define some intervikis. A |interviki| is a 
 shortcut to a different viki directory/namespace, so that you have to care 
 less about page names: >
 
@@ -196,7 +223,7 @@ A viki name is either:
             NOTE: Anyways, the characters []:*&?<>/|\" are not allowed in 
             names as they usually cause trouble when included in file names.
 
-                                                    *viki-interviki*
+                                                    *interviki*
          c. an "inter wiki" name, where the first part (in upper-case letters) 
          is a shortcut to some other viki, so that you have to care less about 
          page names
@@ -549,6 +576,24 @@ Commands~
   Mark selected text as a quoted simple viki name, i.e., enclose it in 
   [- and -].
 
+- VikiEdit NAME                                     *:VikiEdit*
+  Edit the wiki page called NAME. This is a convenient way to edit any wiki 
+  page from vim's command line. There are a few gotchas, though:
+
+  1. Viki doesn't define a default directory for wiki pages. Thus a wiki page 
+  will be looked for in the directory of the current buffer -- whatever this 
+  is. You can circumvent this problem by using |interviki| names.
+
+  2. Viki relies on some buffer local variables to be set. As customizability 
+  is one viki's main design goal (although, one might want to discuss whether 
+  I overdid it), there are no global settings that would define what a valid 
+  viki name is supposed to look like. As a consequence, if you disabled a 
+  certain type of wiki name in the current buffer, you won't be able to edit a 
+  wiki page of this type. E.g.: If the current buffer contains a LaTeX file, 
+  |vikiFamily| is most likely set to "LaTeX" (see |viki-latex|). For the LaTeX 
+  family, e.g., CamelCase and interwiki names are disabled. Consequently, you 
+  can't do, e.g., ":VikiEdit IDEAS::WikiPage".
+
 
 ================================================================================
                                                     *viki-functions*
@@ -640,10 +685,15 @@ URLs [2]:                                           *viki-vars-urls*
 NOTE: [1] The same as *Rx variables but with less groups.
 NOTE: [2] These variables are defined by |VikiSetupBuffer()|.
 
-- b:vikiAnchorRx 
+- b:vikiAnchorRx                                    *b:vikiAnchorRx*
     If this variable exists, the string "%{ANCHOR}" will be replaced with the 
     search text. The expression has to conform to the very nomagic |/\V| 
     syntax.
+
+- g:vikiFreeMarker                                  *g:vikiFreeMarker*
+    If true and an explicitly marked anchor isn't found, search for the anchor 
+    text as such. This search will be case-insensitive. deplate won't be able 
+    to deal with such pseudo-references, of course.
 
 
 File handling:
@@ -730,8 +780,8 @@ Etc:
     Default value: "csSeui"
         s ... Simple viki name 
             c ... CamelCase 
-            S ... Simple, quoted viki name
-            i ... InterViki
+            S ... simple, quoted viki name
+            i ... |interviki|
         e ... Extended viki name
         u ... URL
     Disable certain types of viki names globally or for a single buffer.
@@ -752,6 +802,22 @@ Etc:
     Default: 1
     If non-zero, highligh links to existent or inexistent files in different 
     colours.
+
+- b:vikiInverseFold                                 *b:vikiInverseFold*
+    Default: 0 == OFF
+    If set, the section headings' levels are folded in reversed order so that 
+    |b:vikiMaxFoldLevel| corresponds to the top level and 1 to the lowest 
+    level. This is useful when maintaining a file with a fixed structure where 
+    the important things happen in subsections while the top sections change 
+    little.
+
+- b:vikiMaxFoldLevel                                *b:vikiMaxFoldLevel*
+    Default: 5
+    When using |b:vikiInverseFold|, a heading of level b:vikiMaxFoldLevel 
+    corresponds to level 1, b:vikiMaxFoldLevel - 1 to level 2, 
+    b:vikiMaxFoldLevel - 2 to level 3 ...  and a top heading to level 
+    b:vikiMaxFoldLevel. I.e., if you set |foldlevel| to 1, you will see only 
+    the text at level b:vikiMaxFoldLevel.
 
 
 ================================================================================
@@ -810,15 +876,17 @@ anchors:
  	- \usepackage
  	- \psfig
  	- \includegraphics
-    - \bibliopgraphy
+    - \bibliography
     - \label (as anchors)
     - \ref (in the current file only)
 
 Limitations: There must not be spaces between between the leading backslash, 
 the command name, and its arguments. A command must not span several lines.
 
-Simple viki names (including Interviki, CamelCase, and quoted viki names) are 
-disabled -- as they wouldn't be of much use in a LaTeX document anyway.
+Simple viki names (including |interviki|, CamelCase, and quoted viki names) 
+are disabled -- as they wouldn't be of much use in a LaTeX document anyway. 
+(Well, as a matter of fact they aren't disabled but LaTeX commands are defined 
+as simple viki names.)
 
 This plugin also highlights a hypothetical \viki[anchor]{name} command, which
 could be defined as: \newcommand{\viki}[2][]{#2}
@@ -871,7 +939,7 @@ Links to inexistent files are displayed as normal text.
 Viki BibTeX~
 
 The bibtex ftplugin defines record labels as anchors. Thus, if make an 
-interviki definition point to your bib files you can refer to bib entries as 
+|interviki| definition point to your bib files you can refer to bib entries as 
 viki names. Example: >
 
     let g:vikiInterBIB         = $HOME ."/local/share/texmf/bibtex/bib/tml"
@@ -925,6 +993,6 @@ references, an autogenerated index etc.
 
 --
 (the following is adapted from latex-suite.txt)
-vim:ft=help:fdm=expr:tw=78
+vim:fdm=expr:tw=78
 vim:foldexpr=getline(v\:lnum-2)=~"=\\\\{80,}"?"a1"\:(getline(v\:lnum+1)=~"=\\\\{80,}"?"s1"\:"=")
 vim:foldtext=v\:folddashes.substitute(getline(v\:foldstart),"\\\\s*\\\\*.*","","")

@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 18-Okt-2004.
-" @Revision: 0.446
+" @Last Change: 26-Jän-2005.
+" @Revision: 0.455
 
 if version < 600
   syntax clear
@@ -12,9 +12,10 @@ elseif exists("b:current_syntax")
 endif
 
 " This command sets up buffer variables and adds some basic highlighting.
-let b:VikiEnabled = 0
+let b:vikiEnabled = 0
+" if exists("b:vikiFamily") | echom "DBG ". b:vikiFamily | endif
 call VikiDispatchOnFamily("VikiMinorMode", -1)
-let b:VikiEnabled = 2
+let b:vikiEnabled = 2
 
 syntax sync minlines=50
 syntax sync maxlines=200
@@ -62,6 +63,8 @@ syn region vikiMacro matchgroup=vikiMacroDelim start=/{[^:{}]\+:\?/ end=/}/ tran
 syn match vikiCommand /^\C\s*#\([A-Z]\+\)\>\(\\\n\|.\)*/
 syn region vikiRegion matchgroup=vikiMacroDelim 
             \ start=/^\s*#\([A-Z][A-Za-z]*\>\|!!!\).\{-}<<\z(.\+\)$/ end=/^\s*\z1\s*$/ contains=ALL
+syn region vikiRegionWEnd matchgroup=vikiMacroDelim 
+            \ start=/^\s*#\([A-Z][A-Za-z]*\>\|!!!\).\{-}:\s*$/ end=/^\s*#End\s*$/ contains=ALL
 syn region vikiRegionAlt matchgroup=vikiMacroDelim 
             \ start=/^\s*\z(=\{4,}\)\s*\([A-Z][a-z]*\>\|!!!\).\{-}$/ end=/^\s*\z1\(\s.*\)\?$/ contains=ALL
 
@@ -106,7 +109,7 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   exe "hi vikiTableRowSep term=bold cterm=bold gui=bold ctermbg=". s:cm2 ."Grey guibg=". s:cm2 ."Grey"
   
   exe "hi vikiSymbols term=bold cterm=bold gui=bold ctermfg=". s:cm1 ."Red guifg=". s:cm1 ."Red"
-  exe "hi vikiMarkers term=bold cterm=bold gui=bold ctermfg=". s:cm1 ."Red guifg=". s:cm1 ."Red ctermbg=yellow guibg=yellow"
+  hi vikiMarkers term=bold cterm=bold gui=bold ctermfg=DarkRed guifg=DarkRed ctermbg=yellow guibg=yellow
   hi vikiAnchor term=italic cterm=italic gui=italic ctermfg=grey guifg=grey
   HiLink vikiComment Comment
   HiLink  vikiString String
@@ -128,12 +131,13 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   HiLink vikiMacroDelim Identifier
   HiLink vikiCommand Statement
   HiLink vikiRegion Statement
-  HiLink vikiRegionAlt Statement
+  HiLink vikiRegionWEnd vikiRegion
+  HiLink vikiRegionAlt vikiRegion
  
   delcommand HiLink
 endif
 
-if g:vikiMarkInexistent
+if g:vikiMarkInexistent && !exists("b:vikiCheckInexistent")
     VikiMarkInexistent
 endif
 

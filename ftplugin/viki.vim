@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 13-Okt-2004.
-" @Revision: 25
+" @Last Change: 26-Jän-2005.
+" @Revision: 34
 
 if exists("b:did_ftplugin")
   finish
@@ -12,6 +12,12 @@ let b:did_ftplugin = 1
 
 let b:vikiCommentStart = "%"
 let b:vikiCommentEnd   = ""
+if !exists("b:vikiMaxFoldLevel")
+    let b:vikiMaxFoldLevel = 5
+endif
+if !exists("b:vikiInverseFold")
+    let b:vikiInverseFold  = 0
+endif
 
 exe "setlocal commentstring=". substitute(b:vikiCommentStart, "%", "%%", "g") 
             \ ."%s". substitute(b:vikiCommentEnd, "%", "%%", "g")
@@ -25,7 +31,15 @@ fun! VikiFoldLevel(lnum)
     " let head = matchend(getline(a:lnum), '\V\^'. escape(b:vikiHeadingStart, '\') .'\ze\s\+')
     let head = matchend(getline(a:lnum), '\V\^'. b:vikiHeadingStart .'\+\ze\s\+')
     if head > 0
-        return ">". head
+        if b:vikiInverseFold
+            if b:vikiMaxFoldLevel > head
+                return ">". (b:vikiMaxFoldLevel - head)
+            else
+                return ">0"
+            end
+        else
+            return ">". head
+        endif
     else
         " return foldlevel(a:lnum - 1)
         return "="

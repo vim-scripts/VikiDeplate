@@ -2,33 +2,33 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     28-Jän-2004.
-" @Last Change: 12-Sep-2004.
-" @Revision:    0.127
+" @Last Change: 22-Jän-2005.
+" @Revision:    0.146
 
 if &cp || exists("s:loaded_vikiLatex")
     finish
 endif
 let s:loaded_vikiLatex = 1
 
-fun! VikiSetupBufferLaTeX(state)
+fun! VikiSetupBufferLaTeX(state, ...)
     let noMatch = ""
     call VikiSetupBuffer(a:state, "sSic")
     let b:vikiAnchorRx = '\\label{%{ANCHOR}}'
-    let b:vikiNameTypes = substitute(b:vikiNameTypes, '\C[Sic]', "", "g")
+    let b:vikiNameTypes = substitute(b:vikiNameTypes, '\C[Sicx]', "", "g")
     let b:vikiLaTeXCommands = 'viki\|include\|input\|usepackage\|psfig\|includegraphics\|bibliography\|ref'
     if exists("g:vikiLaTeXUserCommands")
         let b:vikiLaTeXCommands = b:vikiLaTeXCommands .'\|'. g:vikiLaTeXUserCommands
     endif
     if b:vikiNameTypes =~# "s"
-        " let b:vikiSimpleNameRx         = '\(\\\('. b:vikiLaTeXCommands .'\)\(\[\(\_.\{-}\)\]\)\?{\(.\{-}\)}\)'
-        " let b:vikiSimpleNameSimpleRx   = '\\\('. b:vikiLaTeXCommands .'\)\(\[\_.\{-}\]\)\?{.\{-}}'
         let b:vikiSimpleNameRx         = '\(\\\('. b:vikiLaTeXCommands .'\)\(\[\(.\{-}\)\]\)\?{\(.\{-}\)}\)'
         let b:vikiSimpleNameSimpleRx   = '\\\('. b:vikiLaTeXCommands .'\)\(\[.\{-}\]\)\?{.\{-}}'
-        let b:vikiSimpleNameNameIdx    = 1
-        let b:vikiSimpleNameCommandIdx = 2
-        let b:vikiSimpleNameFileIdx    = 5
-        let b:vikiSimpleNameDestIdx    = 0
+        let b:vikiSimpleNameNameIdx    = 2
+        let b:vikiSimpleNameDestIdx    = 5
         let b:vikiSimpleNameAnchorIdx  = 4
+        let b:vikiSimpleNameCompound = 'let erx="'. escape(b:vikiSimpleNameRx, '\"')
+                    \ .'" | let nameIdx='. b:vikiSimpleNameNameIdx
+                    \ .' | let destIdx='. b:vikiSimpleNameDestIdx
+                    \ .' | let anchorIdx='. b:vikiSimpleNameAnchorIdx
     else
         let b:vikiSimpleNameRx        = noMatch
         let b:vikiSimpleNameSimpleRx  = noMatch
@@ -64,62 +64,54 @@ fun! VikiLatexCheckFilename(filename, ...)
     return ""
 endfun
 
+
 fun! VikiCompleteSimpleNameDefLaTeX(def)
-    let name   = MvElementAt(a:def, g:vikiDefSep, 0)
-    if name == g:vikiDefNil
-        throw "Viki: Malformed simple viki name (no name): ".a:def
+    let cmd = MvElementAt(a:def, g:vikiDefSep, 0)
+    if cmd == g:vikiDefNil
+        throw "Viki: Malformed command (no name): ".a:def
     endif
-
-    let cmd  = substitute(name, b:vikiSimpleNameRx, '\'. b:vikiSimpleNameCommandIdx, "g")
-
-    let file = substitute(name, b:vikiSimpleNameRx, '\'. b:vikiSimpleNameFileIdx,    "g")
-    " let file   = MvElementAt(a:def, g:vikiDefSep, 1)
-    " if !(file == g:vikiDefNil)
-        " throw "Viki: Malformed simple viki name (destination): ".a:def
-    " endif
-    
+    let dest = MvElementAt(a:def, g:vikiDefSep, 1)
     let opts = MvElementAt(a:def, g:vikiDefSep, 2)
     let part = MvElementAt(a:def, g:vikiDefSep, 3)
-
     let anchor    = g:vikiDefNil
     let useSuffix = g:vikiDefSep
-    
+
     if cmd == "input"
-        let dest = VikiLatexCheckFilename(file, "", ".tex", ".sty")
+        let dest = VikiLatexCheckFilename(dest, "", ".tex", ".sty")
     elseif cmd == "usepackage"
-        let dest = VikiLatexCheckFilename(file, ".sty")
+        let dest = VikiLatexCheckFilename(dest, ".sty")
     elseif cmd == "include"
-        let dest = VikiLatexCheckFilename(file, ".tex")
+        let dest = VikiLatexCheckFilename(dest, ".tex")
     elseif cmd == "viki"
-        let dest = VikiLatexCheckFilename(file, ".tex")
+        let dest = VikiLatexCheckFilename(dest, ".tex")
         let anchor = opts
     elseif cmd == "psfig"
-        let f == matchstr(file, "figure=\zs.\{-}\ze[,}]")
-        let dest = VikiLatexCheckFilename(file, "")
+        let f == matchstr(dest, "figure=\zs.\{-}\ze[,}]")
+        let dest = VikiLatexCheckFilename(dest, "")
     elseif cmd == "includegraphics"
-        let dest = VikiLatexCheckFilename(file, "", 
+        let dest = VikiLatexCheckFilename(dest, "", 
                     \ ".eps", ".ps", ".pdf", ".png", ".jpeg", ".jpg", ".gif", ".wmf")
     elseif cmd == "bibliography"
-        let n = VikiSelect(file, ",", "Select Bibliography")
+        let n = VikiSelect(dest, ",", "Select Bibliography")
         if n >= 0
-            let f    = MvElementAt(file, ",", n)
+            let f    = MvElementAt(dest, ",", n)
             let dest = VikiLatexCheckFilename(f, ".bib")
         else
             let dest = ""
         endif
     elseif cmd == "ref"
-        let anchor = file
+        let anchor = dest
         let dest   = g:vikiSelfRef
     elseif exists("*VikiLaTeX_".cmd)
-        exe VikiLaTeX_{cmd}(file, opts)
+        exe VikiLaTeX_{cmd}(dest, opts)
     else
         throw "Viki LaTeX: unsupported command: ". cmd
     endif
     
     if dest == ""
-        throw "Viki LaTeX: can't find: ". name
+        throw "Viki LaTeX: can't find: ". cmd
     else
-        return VikiMakeDef(name, dest, anchor, part)
+        return VikiMakeDef(cmd, dest, anchor, part)
     endif
 endfun
 

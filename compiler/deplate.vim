@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     25-Apr-2004.
-" @Last Change: 19-Aug-2004.
-" @Revision:    0.29
+" @Last Change: 07-Nov-2004.
+" @Revision:    0.31
 " 
 " Description:
 " Use deplate as the "compiler" for viki files.
@@ -28,7 +28,7 @@ command! -nargs=* DeplateSetCompiler call DeplateSetCompiler(<q-args>)
 
 DeplateSetCompiler
 
-setlocal errorformat=%f\ %l:%m,%f\ %l-%*\\d:%m
+setlocal errorformat=%f:%l:%m,%f:%l-%*\\d:%m
 
 let &cpo = s:cpo_save
 unlet s:cpo_save

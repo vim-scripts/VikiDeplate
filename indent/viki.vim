@@ -3,8 +3,8 @@
 " @Website:     http://members.a1.net/t.link/
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     16-Jän-2004.
-" @Last Change: 20-Okt-2004.
-" @Revision: 0.174
+" @Last Change: 25-Jän-2005.
+" @Revision: 0.181
 
 if exists("b:did_indent") || exists("g:vikiNoIndent")
     finish
@@ -13,7 +13,7 @@ let b:did_indent = 1
 
 setlocal indentexpr=VikiGetIndent()
 setlocal indentkeys&
-setlocal indentkeys=0=#\ ,0=?\ ,0=<*>\ ,0=-\ ,=::\ ,!^F,o,O,e
+setlocal indentkeys=0=#\ ,0=?\ ,0=<*>\ ,0=-\ ,0=+\ ,0=@\ ,=::\ ,!^F,o,O,e
 " setlocal indentkeys=0=#<space>,0=?<space>,0=<*><space>,0=-<space>,=::<space>,!^F,o,O,e
 
 " Only define the function once.
@@ -33,8 +33,11 @@ fun! VikiGetIndent()
     let ind  = indent(lnum)
     let line = getline(lnum)      " last line
     
-    " Do not change indentation of commented lines.
-    if line =~ '^\s*%'
+    " Do not change indentation of:
+    "   - commented lines
+    "   - headings
+    if line =~ '^\(\s*%\|\*\)'
+        " echom "DBG comment or heading"
         return ind
     endif
 
@@ -55,10 +58,10 @@ fun! VikiGetIndent()
     if plCont >= 0
         let plHeading = matchend(pline, '^\*\+\s\+')
         if plHeading >= 0
-            " echo "DBG ". plHeading
+            " echo "DBG continuation plHeading=". plHeading
             return plHeading
         else
-            " echo "DBG ". pind
+            " echo "DBG continuation pind=". pind
             return pind
         endif
     end
@@ -76,6 +79,7 @@ fun! VikiGetIndent()
         if clList >= 0 || clDesc >= 0
             let spaceEnd = matchend(cline, '^\s\+')
             let rv = (spaceEnd / &sw) * &sw
+            " echom "DBG clList=". clList ." clDesc=". clDesc
             return rv
         else
             let plList = matchend(pline, listRx)
@@ -107,6 +111,7 @@ fun! VikiGetIndent()
         endif
     endif
 
+    " echom "DBG fallback"
     return ind
 endfun
 
