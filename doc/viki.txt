@@ -1,0 +1,511 @@
+*viki.txt*              Viki - A Pseudo Local Wiki Tool
+
+                        Viki MANUAL
+                        Thomas Link (samul AT web de)
+
+
+================================================================================
+                                                    *viki-description*
+Description~
+
+This plugin adds wiki-like hypertext capabilities to any document. Just 
+type |:VikiMinorMode| and all wiki names will be highlighted. If you press 
+<c-cr> when the cursor is over a wiki name, you jump to (or create) the 
+referred page.
+
+When invoked as a "minor" mode, viki is just an addon to other filetypes. If 
+you want to write a viki-only document, invoke viki using the command 
+|:VikiMode| or by setting |'filetype'| to "viki".
+
+
+================================================================================
+                                                    *viki-installation*
+Installation~
+
+viki.zip consists of the following files: >
+
+    ftplugin/viki.vim
+    plugin/viki.vim
+    plugin/vikiLatex.vim
+    syntax/viki.vim
+    doc/viki.txt
+
+Extract viki.zip to your local vimfiles directory ($VIM/vimfiles/ or ~/.vim) 
+and run |:helptags| on that directory. Make sure to read |viki-customization|.
+
+
+===============================================================================
+                                                    *viki-requirements*
+Requirements~
+
+- multvals.vim (vimscript #171)
+
+
+Optional Enhancments~
+
+- genutils.vim (see |g:vikiSaveHistory|)
+- kpsewhich (not a vim plugin) for LaTeX support
+
+
+================================================================================
+                                                    *viki-names*
+Viki Names~
+
+A viki name is either:
+
+                                                    *viki-simple-names*
+    1. Simple wiki names -- these refer to files in the same directory as the 
+       current file:
+
+        a. a word in CamelCase
+            VikiName
+            VikiName#anchor
+
+            NOTE: A simple viki name may include characters from 
+            g:vikiUpperCharacters and g:vikiLowerCharacters.
+
+        b. some text between "[-" and "-]"
+            [-name-]
+            [-some name-]#there
+
+            NOTE: "[--]" refers to the current file.
+
+            NOTE: Anyways, the characters []:*&?<>/|\" are not allowed in 
+            names as they usually cause trouble when included in file names.
+
+                                                    *viki-interviki*
+         c. an "inter wiki" name, where the first part (in upper-case letters) 
+         is a shortcut to some other viki
+            OTHERVIKI::VikiName
+            OTHERVIKI::VikiName#there
+            OTHERVIKI::[-some name-]
+            OTHERVIKI::[-some name-]#there
+
+            NOTE: An "inter wiki" is defined by setting a variable with the 
+            prefix "g:vikiInter". Example:
+
+                let g:vikiInterOTHERVIKI = "$HOME/bla"
+
+            Then OTHERVIKI::VikiName points to the file "$HOME/bla/VikiName".
+
+            NOTE: Set the string variable g:vikiInter{NAME}_suffix (see 
+            |curly-braces-names|) in order to override the settings of 
+            |b:vikiNameSuffix| and |g:vikiUseParentSuffix| for references to 
+            the other viki.
+
+        NOTE: If the variable |b:vikiNameSuffix| is defined, it will be added to 
+        simple wiki names so that the simple wiki name "OtherFile" refers to 
+        "OtherFile.suffix" -- e.g. for interlinking LaTeX-files.  
+        Alternatively, you can set |g:vikiUseParentSuffix| to non-zero in order 
+        to make viki always append the "parent" file's suffix to the 
+        destination file.
+
+                                                    *viki-extended-names*
+    2. an extended wiki name of the form:
+
+            [[destination]]
+            [[destination][name]]
+            [[destination#anchor][name]]
+
+        NOTE: The destination name is taken literally, i.e. variables like 
+        |g:vikiUseParentSuffix| or |b:vikiNameSuffix| have no effect.
+
+        NOTE: Opening extended wiki names referring to files with suffixes 
+        matching one of |vikiSpecialFiles| (e.g. [[test.jpg]]) can be 
+        delegated to the operating system -- see |VikiOpenSpecialFile()|. The 
+        same is true for names matching |vikiSpecialProtocols|, which will be 
+        opened with |VikiOpenSpecialProtocol()|.
+
+        NOTE: In extended wiki names, destination path is relative to the 
+        document's current directory if it doesn't match 
+        "^\(\/\|[a-z]:\|[a-z]\+://\)". I.e.  [[../test]] refers to the 
+        directory parent to the document's directory. A tilde at the beginning 
+        will be replaced with $HOME.
+
+                                                    *viki-urls*
+    3. an URL (see g:vikiUrlRx)
+        It is assumed that these URLs should be opened with an external 
+        program; this behaviour can be changed by redefining the function 
+        |VikiOpenSpecialProtocol(url)|.
+
+Adding #[a-z0-9]\+ to the wiki name denotes a reference to a specific anchor.  
+Examples for wiki names referring to an anchor: >
+
+	ThatPage#there
+	[[anyplace/filename.txt#there]]
+	[[anyplace/filename.txt#there][Filename]]
+
+A anchor is marked as "^".b:commentStart."\?#[a-z0-9]\+" in the destination
+file. If |b:commentStart| is not defined, the EnhancedCommentify-variables or
+|&commentstring| will be used instead.  Examples ('|' = beginning of line):
+
+    - LaTeX file, b:commentStart is set to "%"
+      |%#anchor
+      |#anchor
+    - C file, |&commentstring| is set to "/*%s*/"
+      |/*#anchor */
+    - Text file, b:commentStart is undefined
+      |#anchor
+
+NOTE: I guess this only works for single line comments?
+
+NOTE: If "#" is the comment character (as in ruby), a space should follow the
+comment character in order to distinguish comments from anchors.
+
+NOTE: In "full" viki mode (when invoked via VikiMode) comments are marked 
+with "%" by default (see g:vikiCommentStart). An anchor has thus to be 
+written as in the LaTeX example.
+
+
+================================================================================
+                                                    *viki-markup*
+Pseudo Markup~
+
+The pseudo markup is to some degree compatible with emacs-wiki, which in turn  
+is to some degree compatible with some other wiki -- i.e., it's compatible 
+enough to edit and work with files in emacs-wiki markup, but in some aspects 
+it's more restrictive. Unfortunately, as there is currently no 
+html-translator/exporter for this markup, it's quite useless for the moment.
+But it looks nice on the screen.
+
+NOTE: At present, the markup is defined for "one-line paragraphs" (set 
+textwidth=0).
+
+
+                                                    *viki-headings*
+Headings~
+* Level 1
+** Level 2
+...
+
+    NOTE: Headings can span more than one line by putting a backslash ('\') at 
+    the end of the line.
+    
+    NOTE: If |g:vikiHeadingFont| is defined, the heading will be set in this 
+    font.
+
+
+                                                    *viki-lists*
+Lists: (indented)~
+    - Item
+        * Item
+            + Item
+                1. Item 1
+                    a. Item a
+                    B. Item B
+
+
+                                                    *viki-descriptions*
+Descriptions: (indented)~
+    Item :: Description
+
+
+                                                    *viki-tables*
+Tables~
+|-                  -|
+|| Head || Category ||
+|  Row   | Value     |
+|-                  -|
+
+    NOTE: Rows can span more than one line by putting a backslash ('\') at 
+    the end of the line.
+
+
+                                                    *viki-symbols*
+Symbols~
+<-, ->, <=, =>, <~, ~>, <->, <=>, <~>, ==, !=, ~~, ...
+
+
+                                                    *viki-markers*
+Markers~
++++, ###, ???, !!!
+
+
+                                                    *viki-strings*
+Strings~
+"Text in \"quotes\""
+
+    NOTE: See also |g:vikiMarkupEndsWithNewline|.
+
+
+                                                    *viki-textstyles*
+Textstyles~
+*bold*,       *bold\*asterisk*,         **continuous bold**
+/italic/,     /italic\/slash/,          //continuous italic//
+_underlined_, _underlined\_underscore_, __continuous underline__
+=typewriter=, =typewriter\=equal=,      ==continuous typewriter==
+
+    NOTE: There must not by a whitespace after the opening mark.
+
+    NOTE: For the word styles, there must be a whitespace before the opening 
+    mark, i.e. a/b/c will be highlighted as normal text -- it won't be 
+    highlighted. You could use the continuous markup for putting the "b" in the 
+    example in italic.
+
+    NOTE: If |g:vikiTypewriterFont| is defined, this font will be used to 
+    highlight text in typewriter style.
+    
+    NOTE: See also |g:vikiMarkupEndsWithNewline|.
+
+
+                                                    *viki-comments*
+Comments (whole lines)~
+%Comment
+
+
+                                                    *viki-embedded-commands*
+Curly braces~
+Curly braces should be escaped with a backslash -- i.e., \{ and \}. If I ever 
+find the time to write a conversion tool, curly braces will be used for 
+commands/functions.
+
+
+                                                    *viki-backslash*
+Backslashes~
+    - A backslash at the end of the line should make a pattern include the 
+      next line.
+    - In general, a backslash should be an escape character that prevents the 
+      vikification of the following character.
+    - A backslash should itself be escaped by a backslash.
+
+\_nounderline_, No\Viki\Name
+
+
+================================================================================
+                                                    *viki-key-bindings*
+Default Key Binding~
+
+<c-cr> ... |VikiMaybeFollowLink()|: Usually only works when the cursor is over 
+a wiki syntax group -- if the second argument is 1 it tries to interpret the 
+text under the cursor as a wiki name anyway.
+
+<LocalLeader>vb ... |VikiGoBack()|
+
+If |g:vikiMapMouse| is true then these mappings are active, too:
+<m-leftmouse> ... |VikiMaybeFollowLink()|
+<m-leftmouse> ... |VikiGoBack()| (always jumps to the last known entry point)
+
+
+Additional Key Binding In Full Viki Mode
+
+<c-tab>    ... |:VikiFindNext|
+<s-c-tab>  ... |:VikiFindPrev|
+
+
+================================================================================
+                                                    *viki-commands*
+Commands~
+
+                                                    *:VikiMinorMode*
+- VikiMinorMode
+- VikiMinorModeMaybe (don't complain when Viki is already enabled)
+
+                                                    *:VikiMode*
+- VikiMode (do additional highlighting)
+- VikiModeMaybe (don't complain when Viki is already enabled)
+
+                                                    *:VikiFind*
+                                                    *:VikiFindNext* *:VikiFindPrev*
+- VikiFindNext, VikiFindPrev (find the next/previous viki name or URL)
+
+
+================================================================================
+                                                    *viki-functions*
+Functions~
+
+- VikiMinorMode(state)                              *VikiMinorMode()*
+- VikiMode(state)                                   *VikiMode()*
+    a:state:
+        +/-1 ... Minor mode (negative number ~ don't complain)
+        +/-2 ... Full mode (negative number ~ don't complain)
+
+- VikiMaybeFollowLink(oldmap, ignoreSyntax)         *VikiMaybeFollowLink()*
+    oldmap: If there isn't a viki link under the cursor:
+        ""       ... throw error 
+        1        ... return \<c-cr>
+     	whatever ... return whatever
+    ignoreSyntax: If there isn't a viki syntax group under the cursor:
+        0 ... no viki name found
+        1 ... try to find a viki name matching a the viki regexp
+
+- VikiFindAnchor(anchor)                            *VikiFindAnchor()*
+
+- VikiGoBack()                                      *VikiGoBack()*
+  Viki keeps record about the "source" files from where a viki page was 
+  entered.  Calling this function jumps back to the "source" file (if only one 
+  such back reference is known) or let's you select from a list of "source" 
+  files. The information is stored in buffer variables -- i.e., it gets lost 
+  after closing the buffer. Care was taken to reduce information clutter, 
+  which is why the number of possible back references per "source" file was 
+  limited to one.
+
+- VikiOpenSpecialFile(filename)                     *VikiOpenSpecialFile()*
+  Handles filenames that match |vikiSpecialFiles|. Under MS Windows opening 
+  the file is delegated to the explorer. On other systems, this function 
+  currently has to be redefined by the user.
+
+- VikiOpenSpecialProtocol(url)                      *VikiOpenSpecialProtocol()*
+  Same issues as with |VikiOpenSpecialFile()|.
+
+- VikiDefineMarkup(mode)                            *VikiDefineMarkup()*
+- VikiDefineHighlighting(mode)                      *VikiDefineHighlighting()*
+
+
+================================================================================
+                                                    *viki-variables*
+Variables~
+
+Simple Viki Names [2]:                              *viki-vars-simple-names*
+- b:vikiLowerCharacters, b:vikiUpperCharacters
+- b:vikiAnchorMarker
+- b:vikiSimpleNameRx, b:vikiSimpleNameSimpleRx[1]
+- b:vikiSimpleNameNameIdx, b:vikiSimpleNameDestIdx, b:vikiSimpleNameAnchorIdx
+
+Extended Viki Names [2]:                            *viki-vars-ext-names*
+- b:vikiExtendedNameRx, b:vikiExtendedNameSimpleRx[1]
+- b:vikiExtendedNameNameIdx, b:vikiExtendedNameDestIdx, 
+  b:vikiExtendedNameAnchorIdx
+
+URLs [2]:                                           *viki-vars-urls*
+- b:vikiUrlRx, b:vikiUrlSimpleRx[1]
+- b:vikiUrlNameIdx, b:vikiUrlDestIdx, b:vikiUrlAnchorIdx
+
+NOTE: [1] The same as *Rx variables but with less groups.
+NOTE: [2] These variables are defined by |VikiSetupBuffer()|.
+
+
+File handling:
+- g:vikiSpecialFiles, b:vikiSpecialFiles            *vikiSpecialFiles*
+    Default value: jpg\|gif\|bmp\|pdf\|dvi\|ps
+    A list of extensions for files that should be opened with 
+    |VikiOpenSpecialFile()|.
+- g:vikiSpecialProtocols, b:vikiSpecialProtocols    *vikiSpecialProtocols*
+    Default value: https\?\|ftps\?
+    A list of protocolls that should be opened with 
+    |VikiOpenSpecialProtocol()|.
+- g:vikiUseParentSuffix                             *g:vikiUseParentSuffix*
+    Default value: 0
+    If true, always append the "parent" file's suffix to the destination file 
+    name.
+- b:vikiNameSuffix                                  *b:vikiNameSuffix*
+    Default value: ""
+    Append suffix to the destination file name.
+
+
+Markup:
+- g:vikiCommentStart                                *g:vikiCommentStart*
+    Default value: %
+    Defines the prefix of comments when in "full" viki mode.
+- b:vikiCommentStart                                *b:vikiCommentStart*
+    In minor mode this variable is set to either:
+        - b:commentStart
+        - b:EnhCommentifyCommentOpen
+        - matchstr(&commentstring, "^\\zs.*\\ze%s")
+    In "full" viki mode it's set to |g:vikiCommentStart|.
+- g:vikiMarkupEndsWithNewline                       *g:vikiMarkupEndsWithNewline*
+    Default value: 1
+    Defines if |viki-strings| and |viki-textstyles| end at one (=1) or two (=2) 
+    newline characters. Setting this value to 0 to disable this feature.
+- g:vikiTypewriterFont                              *g:vikiTypewriterFont*
+    See |viki-textstyles|.
+- g:vikiHeadingFont                                 *g:vikiHeadingFont*
+    See |viki-headings|.
+- g:vikiFamily, b:vikiFamily                        *vikiFamily*
+    By defining this variable, family specific functions will be called for:
+        - VikiSetupBuffer{b:vikiFamily}(state)
+        - VikiDefineMarkup{b:vikiFamily}(state)
+        - VikiDefineHighlighting{b:vikiFamily}(state)
+        - VikiCompleteSimpleNameDef{b:vikiFamily}(def)
+        - VikiCompleteExtendedNameDef{b:vikiFamily}(def)
+        - VikiFindAnchor{b:vikiFamily}(anchor)
+    If one of these functions is undefined for a "viki family", then the
+    default one is called.
+
+
+Etc:
+- g:vikiMapMouse                                    *g:vikiMapMouse*
+    See |viki-key-bindings|.
+- b:vikiNameTypes, g:vikiNameTypes                  *vikiNameTypes*
+    Default value: "csSeui"
+        s ... Simple viki name 
+            c ... CamelCase 
+            S ... Simple quoted viki name
+        e ... Extended viki name
+        u ... URL
+        i ... InterViki
+    Disable certain types of viki names globally or for a single buffer.
+    (experimental, doesn't fully work yet)
+- g:vikiSaveHistory                                 *g:vikiSaveHistory*
+    Default value: 0
+    If genutils.vim is installed, the history data will be saved in 
+    |viminfo-file|. Like most of this plugin, this feature is _experimental_
+    and is turned off by default.
+
+
+Customization:                                      *viki-customization*
+It's probably a good idea to check the values of the following variables:
+    - |g:vikiTypewriterFont| (see |viki-textstyles|)
+    - |g:vikiHeadingFont| (see |viki-headings|)
+as well as:
+    - |g:vikiUseParentSuffix| (see |viki-names|)
+    - |vikiNameTypes|
+
+Additionally, you can use the following variables to change viki's behaviour:
+
+If the variables b:getVikiLink or b:getExtVikiLink exist, their values are 
+used as function names for returning the current viki name's definition. A 
+viki definition is a "multvalue" (see multvals.vim, vimscript #171) of the 
+three elements name, destination, anchor with g:vikiDefSep as the separator.
+
+If the variables b:editVikiPage or b:createVikiPage exist, their values are 
+interpreted as _command_ names for editing readable or creating new wiki 
+pages.
+
+
+================================================================================
+                                                    *viki-highlight*
+Highlighting~
+
+Viki.vim defines several new highlight groups. Precaution is taken to select 
+different colours depending on the background, but colour schemes are ignored.
+
+- vikiHyperLink
+- vikiHeading
+- vikiList
+- vikiTableHead
+- vikiTableRow
+- vikiSymbols
+- vikiMarkers
+- vikiAnchor
+- vikiString
+- vikiBold
+- vikiItalic
+- vikiUnderline
+- vikiTypewriter
+- vikiCommand
+
+
+================================================================================
+                                                    *viki-latex*
+Viki LaTeX~
+
+NOTE: This is hardly tested.
+
+The archiv includes an experimental add-on for using LaTeX commands like
+\include, \input, and \usepackage as simple wiki names. Simple viki names
+(including Interviki, CamelCase, and quoted viki names) are disabled.
+
+This also highlights a hypothetical \viki{name} command, which could be
+defined as: \newcommand{\viki}[1]{#1}
+
+                                                    *:VikiMinorModeLaTeX*
+LaTeX support is switched on with the command :VikiMinorModeLaTeX. This
+command relies on the external kpsewhich tool, which has to be installed on
+your machine.
+
+
+--
+(the following is taken from latex-suite.txt)
+vim:ft=help:fdm=expr:tw=78
+vim:foldexpr=getline(v\:lnum-1)=~"=\\\\{80,}"?"a1"\:(getline(v\:lnum+1)=~"=\\\\{80,}"?"s1"\:"=")
+vim:foldtext=v\:folddashes.substitute(getline(v\:foldstart),"\\\\s*\\\\*.*","","")
