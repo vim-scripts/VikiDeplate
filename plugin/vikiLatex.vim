@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     28-Jän-2004.
-" @Last Change: 19-Aug-2004.
-" @Revision:    0.126
+" @Last Change: 12-Sep-2004.
+" @Revision:    0.127
 
 if &cp || exists("s:loaded_vikiLatex")
     finish
@@ -79,6 +79,7 @@ fun! VikiCompleteSimpleNameDefLaTeX(def)
     " endif
     
     let opts = MvElementAt(a:def, g:vikiDefSep, 2)
+    let part = MvElementAt(a:def, g:vikiDefSep, 3)
 
     let anchor    = g:vikiDefNil
     let useSuffix = g:vikiDefSep
@@ -118,7 +119,7 @@ fun! VikiCompleteSimpleNameDefLaTeX(def)
     if dest == ""
         throw "Viki LaTeX: can't find: ". name
     else
-        return VikiMakeDef(name, dest, anchor)
+        return VikiMakeDef(name, dest, anchor, part)
     endif
 endfun
 

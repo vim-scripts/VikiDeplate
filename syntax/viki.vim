@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 09-Sep-2004.
-" @Revision: 0.399
+" @Last Change: 27-Sep-2004.
+" @Revision: 0.424
 
 if version < 600
   syntax clear
@@ -13,12 +13,11 @@ endif
 
 " This command sets up buffer variables and adds some basic highlighting.
 let b:VikiEnabled = 0
-VikiMinorModeMaybe
+call VikiDispatchOnFamily("VikiMinorMode", -1)
 let b:VikiEnabled = 2
 
 syntax sync minlines=50
 syntax sync maxlines=200
-" linebreaks=1
 
 syn match vikiEscape /\\/ contained containedin=vikiEscapedChar
 syn match vikiEscapedChar /\\\_./ contains=vikiEscape,vikiChar
@@ -36,17 +35,19 @@ syn region vikiContinousUnderline start=/\(^\|\W\zs\)__[^ 	_]/ end=/__\|\n\{2,}/
 syn match vikiTypewriter /\(^\|\W\zs\)=\(\\=\|\w\)\{-1,}=/
 syn region vikiContinousTypewriter start=/\(^\|\W\zs\)==[^ 	=]/ end=/==\|\n\{2,}/ skip=/\\\n/
 
+syn cluster vikiHyperLinks contains=vikiLink,vikiExtendedLink,vikiURL,vikiInexistentLink
 syn cluster vikiTextstyles contains=vikiBold,vikiContinousBold,vikiTypewriter,vikiContinousTypewriter,vikiUnderline,vikiContinousUnderline,vikiEscapedChar
 
-exe 'syn match vikiComment /^\s*'. escape(b:vikiCommentStart, '\/.*^$~[]') .'.*$/ contains=vikiTextstyles,vikiLink,vikiExtendedLink,vikiURL'
+" contains=vikiTextstyles,vikiLink,vikiExtendedLink,vikiURL
+exe 'syn match vikiComment /^\s*'. escape(b:vikiCommentStart, '\/.*^$~[]') .'.*$/ contains=ALL'
 
-syn region vikiString start=+^\s\+"\|"+ end=+"[.?!]\?\s\+$\|"+ contains=@vikiTextstyles
+syn region vikiString start=+^\s\+"\|"+ end=+"[.?!]\?\s\+$\|"+ contains=@vikiTextstyles,@vikiHyperLinks
 
 let b:vikiHeadingStart = '*'
-exe 'syn region vikiHeading start=/\V\^'. escape(b:vikiHeadingStart, '\') .'\+\s\+/ end=/\n/ contains=@vikiTextstyles'
+exe 'syn region vikiHeading start=/\V\^'. escape(b:vikiHeadingStart, '\') .'\+\s\+/ end=/\n/ contains=@vikiTextstyles,@vikiHyperLinks'
 
-syn match vikiList /^\s\+\([-+*#?]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\ze\s/
-syn match vikiDescription /^\s\+\(\\\n\|.\)\{-1,}\s::\ze\s/
+syn match vikiList /^\s\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\ze\s/
+syn match vikiDescription /^\s\+\(\\\n\|.\)\{-1,}\s::\ze\s/ contains=@vikiHyperLinks
 
 syn match vikiTableRowSep /||\?/ contained containedin=vikiTableRow,vikiTableHead
 syn region vikiTableHead start=/^\s*|| / skip=/\\\n/ end=/ ||\s*$/ contains=ALLBUT,vikiTableRow,vikiTableHead transparent keepend

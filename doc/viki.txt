@@ -95,10 +95,15 @@ In order to automatically set |deplate| as the compiler for viki files: >
     let g:deplatePrg = "deplate -x -X "
     au FileType viki compiler deplate
 
-In order to check for links to inexistent files on reentering a buffer after 
-creating a new viki page, add this to your .vimrc file: >
+Some users might want to automatically set the filetype to viki depening on 
+the file extension. This can be done using |:autocmd|: >
 
-    autocmd BufEnter * VikiCheckInexistent
+    let g:vikiNameSuffix=".viki"
+    autocmd! BufRead,BufNewFile *.viki set filetype=viki
+
+You can also use |:autocmd| to set the filetype depending on the path: >
+
+    autocmd! BufRead,BufNewFile $HOME/MyWiki/* set filetype=viki
 
 If the variables b:getVikiLink or b:getExtVikiLink exist, their values are 
 used as _function_ names for returning the current viki name's definition. A 
@@ -125,13 +130,14 @@ and set it to whatever you want.
                                                     *viki-requirements*
 Requirements~
 
-- multvals.vim (vimscript #171)
+- multvals.vim (vimscript #171, >= 3.8.0)
 
 
 Optional Enhancements~
 
 - genutils.vim (vimscript #197 for saving back references; but see 
   |g:vikiSaveHistory|)
+- imaps.vim (vimscript #244 or #475 for |:VimQuote|)
 - kpsewhich (not a vim plugin :-) for LaTeX support
 
 
@@ -290,10 +296,10 @@ Lists: (indented)~
         # Item
             # Item 1
             # Item 2
-                ? Item A
-                ? Item B
+                @ Item A
+                @ Item B
 
-    NOTE: "?" (unordered lists) and "#" (ordered lists) are the preferred 
+    NOTE: "@" (unordered lists) and "#" (ordered lists) are the preferred 
     markers.
 
 
@@ -459,6 +465,7 @@ text under the cursor as a wiki name anyway.
 <LocalLeader>v1 - <LocalLeader>v4 ... Open in window 1-4
 
 <LocalLeader>vb ... |VikiGoBack()|
+<LocalLeader>vq ... |:VikiQuote| mark selected text a quoted viki name
 
 <LocalLeader>vd ... |:VikiMarkInexistent| in the whole document
 <LocalLeader>vp ... |:VikiMarkInexistent| in the current paragraph
@@ -499,6 +506,10 @@ Commands~
 - VikiMarkInexistent, VikiMarkInexistentInParagraph
   Update the highlighting of links to inexistent files. VikiMarkInexistent 
   can take a range as argument.
+
+- VikiQuote                                         *:VikiQuote*
+  Mark selected text as a quoted simple viki name, i.e., enclose it in 
+  [- and -].
 
 
 ================================================================================
@@ -615,7 +626,7 @@ File handling:
     name. I.e. if the current file is "ThisIdea.txt" the the viki name 
     "OtherIdea" will refer to the file "OtherIdea.txt".
 
-- b:vikiNameSuffix                                  *b:vikiNameSuffix*
+- g:vikiNameSuffix b:vikiNameSuffix                 *vikiNameSuffix* *b:vikiNameSuffix*
     Default value: ""
     Append suffix to the destination file name.
 
@@ -657,6 +668,10 @@ Markup:
         - VikiFindAnchor{b:vikiFamily}(anchor)
     If one of these functions is undefined for a "viki family", then the
     default one is called.
+
+    Apart from the default behaviour the following families are defined:
+        - LaTeX (see |viki-latex|)
+        - AnyWord (see |viki-any-word|)
 
 
 Etc:
@@ -796,6 +811,17 @@ simple minded example: >
     fun! VikiLaTeX_self(args, opts)
         return 'let dest="'.g:vikiSelfRef.'" | let anchor="'.a:opts.'"'
     endfun
+
+
+================================================================================
+                                                    *viki-any-word*
+Viki Any Word~
+
+If b:vikiFamily or g:vikiFamily is set to "AnyWord", then any word becomes a 
+potential viki link.
+
+This feature conflicts with the highlighting of links to inexistent files. 
+Links to inexistent files are displayed as normal text.
 
 
 ================================================================================

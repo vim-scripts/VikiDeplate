@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 08-Sep-2004.
-" @Revision: 20
+" @Last Change: 10-Sep-2004.
+" @Revision: 23
 
 if exists("b:did_ftplugin")
   finish
@@ -38,5 +38,3 @@ endif
 " compiler deplate
 
 let b:vikiEnabled = 2
-
-" vim: ff=unix

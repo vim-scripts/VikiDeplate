@@ -3,8 +3,8 @@
 " @Website:     http://members.a1.net/t.link/
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     16-Jän-2004.
-" @Last Change: 09-Sep-2004.
-" @Revision: 0.133
+" @Last Change: 27-Sep-2004.
+" @Revision: 0.158
 
 if exists("b:did_indent") || exists("g:vikiNoIndent")
     finish
@@ -13,7 +13,8 @@ let b:did_indent = 1
 
 setlocal indentexpr=VikiGetIndent()
 setlocal indentkeys&
-setlocal indentkeys+=0#,0?,0<*>,0-,=::,o
+setlocal indentkeys=0=#\ ,0=?\ ,0=<*>\ ,0=-\ ,=::\ ,!^F,o,O,e
+" setlocal indentkeys=0=#<space>,0=?<space>,0=<*><space>,0=-<space>,=::<space>,!^F,o,O,e
 
 " Only define the function once.
 if exists("*VikiGetIndent")
@@ -46,7 +47,7 @@ fun! VikiGetIndent()
     endif
     
     if cind > 0
-        let listRx = '^\s\+\([-+*#?]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\s'
+        let listRx = '^\s\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\s'
         let descRx = '^\s\+.\{-1,}\s::\s'
         
         let cline = getline(cnum) " current line
@@ -68,12 +69,15 @@ fun! VikiGetIndent()
             let pline  = getline(pnum) " last line
             let plList = matchend(pline, listRx)
             let plDesc = matchend(pline, descRx)
+            " echom "DBG plList=". plList ." plDesc=". plDesc
 
             if plList >= 0
+                " echom "DBG Return ". plList
                 return plList
             endif
 
             if plDesc >= 0
+                " echom "DBG Return ". pind + (&sw / 2)
                 return pind + (&sw / 2)
             endif
 
