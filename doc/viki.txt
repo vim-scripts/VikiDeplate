@@ -8,15 +8,30 @@
                                                     *viki-description*
 Description~
 
-This plugin adds wiki-like hypertext capabilities to any document. Just 
-type |:VikiMinorMode| and all wiki names will be highlighted. If you press 
-<c-cr> when the cursor is over a wiki name, you jump to (or create) the 
-referred page.
+This plugin adds wiki-like hypertext capabilities to Vim. You can use viki as 
+a "minor" mode (i.e., as an add-on to any other mode) or as a full-fledged 
+wiki mode. There is also an add-on plugin for "wikifying" latex documents by 
+turning some latex commands into wiki names. If viki is properly configured, 
+activating a reference to an image, a webpage etc. will view that resource in 
+an external viewer.
 
-When invoked as a "minor" mode, viki is just an addon to other filetypes. If 
-you want to write a viki-only document, set |'filetype'| to "viki". The "full" 
-mode provides folding support, additional highlighting for headings, lists, 
-tables, textstyles etc.
+From http://sourceforge.net/projects/deplate/ you can download a ruby based 
+tool to convert viki markup to html or latex. On its homepage 
+(http://deplate.sf.net) you can read a more detailled specification of the 
+markup.
+
+MINOR WIKI MODE:
+Just type |:VikiMinorMode| and all wiki names and URLs will be highlighted.  
+When the cursor is over a wiki name, you can press <c-cr> to jump to (or 
+create) the referred page. Pressing <LocalLeader>vb brings you back to the 
+original document. Alternatively, you can use <m-leftmouse> and <m-rightmouse> 
+to jump back and forth.
+
+FULL WIKI MODE:
+Set 'filetype' to viki or execute |:VikiMode|. The full wiki mode is like the 
+minor mode but with folding support, syntax highlighting (for headings, lists, 
+tables, textstyles etc.), and additional key bindings (i.e., you can press 
+<c-tab> or <s-c-tab> to move the cursor to the next/previous viki name).
 
 
 ================================================================================
@@ -28,14 +43,41 @@ and run |:helptags| on that directory.
 
 Customization:                                      *viki-customization*
 It's probably a good idea to check the values of the following variables:
-    - |g:vikiTypewriterFont| (see |viki-textstyles|)
-    - |g:vikiHeadingFont| (see |viki-headings|)
-    - |g:vikiUpperCharacters| and |g:vikiLowerCharacters|
-as well as:
-    - |g:vikiUseParentSuffix| (see |viki-names|)
+
+    - |g:vikiUpperCharacters| and |g:vikiLowerCharacters|; for German 
+      character set these variables to something like: >
+        
+        " this is in iso-latin-1
+        let g:vikiLowerCharacters = "a-zäöüßáàéèíìóòçñ"
+        let g:vikiUpperCharacters = "A-ZÄÖÜ"
+<
+    - |g:vikiUseParentSuffix| (see |viki-names|); I personally prefer this to 
+      be ON >
+
+        let g:vikiUseParentSuffix = 1
+<
     - |vikiNameTypes|
 
-Additionally, you can use the following variables to change viki's behaviour:
+Also, you might need to configure some external programs like in this example: 
+>
+    let g:vikiOpenUrlWith_mailto = 'thunderbird -compose %{URL}'
+    let g:vikiOpenFileWith_ANY   = "silent !start %{FILE}"
+
+Later on, you might also like to define some intervikis: >
+
+    let g:vikiInterSCI        = $HOME ."/Projects/Sci/Ideas"
+    let g:vikiInterSCI_suffix = ".txt"
+
+In order to use the LaTeX enabled viki variant, add this to your .vimrc file: >
+
+    au FileType tex let b:vikiFamily="LaTeX"
+
+In order to automatically set |deplate| as the compiler for viki files: >
+
+    " we want to allow deplate to execute ruby code and external helper 
+    " application
+    let g:deplatePrg = "deplate -x -X "
+    au FileType viki compiler deplate
 
 If the variables b:getVikiLink or b:getExtVikiLink exist, their values are 
 used as function names for returning the current viki name's definition. A 
@@ -45,6 +87,11 @@ three elements name, destination, anchor with g:vikiDefSep as the separator.
 If the variables b:editVikiPage or b:createVikiPage exist, their values are 
 interpreted as _command_ names for editing readable or creating new wiki 
 pages.
+
+For a better highlighting of viki files, also check out these two variables:
+
+    - |g:vikiTypewriterFont| (see |viki-textstyles|)
+    - |g:vikiHeadingFont| (see |viki-headings|)
 
 
 ===============================================================================
@@ -326,7 +373,7 @@ Short list of available macros (see also |deplate|):
         - Example: >
             Foo bar{fn: x} foo bar.
 
-            #Fn x <<EOF
+            #Fn: x <<EOF
                 Bla bla.
             EOF
 <   - {cite: ID}
@@ -360,7 +407,7 @@ Backslashes~
       vikification of the following character.
     - A backslash should itself be escaped by a backslash.
 
-\_nounderline_, No\Viki\Name
+\_nounderline_, \NoVikiName
 
 
 ================================================================================
@@ -597,6 +644,16 @@ Viki Compile~
 The compile plugin simply defines |deplate| as the current file's |makeprg|. 
 It also provides basic support for |deplate|'s error messages.
 
+The compiler plugin provides a command for setting compiler options:
+
+    - DeplateSetCompiler [FLAGS]
+
+E.g. when using the lvimrc plugin, you could put something like this into the 
+current directorie's .lvimrc-file for putting the output into a dedicated 
+directory: >
+
+    DeplateSetCompiler -d ../html
+
 
 ================================================================================
                                                     *viki-latex* *vikiLatex*
@@ -606,7 +663,7 @@ The archiv includes an experimental add-on for using LaTeX commands as simple
 wiki names. Among the commands that are to some degree used as hyperlinks or 
 anchors:
 
-    - \viki[anchor]{name]
+    - \viki[anchor]{name}
  	- \input
  	- \include
  	- \usepackage
@@ -657,6 +714,43 @@ simple minded example: >
 
 
 ================================================================================
+                                                    *viki-bibtex*
+Viki BibTeX~
+
+The bibtex ftplugin defines record labels as anchors. Thus, if make an 
+interviki definition point to your bib files you can refer to bib entries as 
+viki names. Example: >
+
+    let g:vikiInterBIB         = $HOME ."/local/share/texmf/bibtex/bib/tml"
+    let g:vikiInterBIB_suffix  = ".bib"
+
+    Then, activating the following viki name
+    BIB::[-monos-]#rec02
+    would open the file monos.bib and search for the record rec02.
+
+
+================================================================================
+                                                    *viki-tags*
+Ctags~
+
+For ctags support (e.g. in conjunction with taglist) add this to your .ctags 
+file (this assumes that *.txt files are in viki mode or modify the file suffix 
+if necessary): >
+
+    --langdef=deplate
+    --langmap=deplate:.txt
+    --regex-deplate=/^(\*+ .+)/\1/s,structure/
+    --regex-deplate=/^(#[a-z][a-z0-9]+)/\1/s,structure/
+    --regex-deplate=/\[\[[^\]]+\]\[([^\]]+)\]\]/\1/r,reference/
+    --regex-deplate=/\[\[([^\]]+)\]\]/\1/r,reference/
+    --regex-deplate=/([A-Z][a-z]+([A-Z][a-z]+)+)/\1/r,reference/
+    --regex-deplate=/([a-z]+:\/\/[A-Za-z0-9.:%?=&_~@\/|-]+)/\1/u,url/
+
+For use with taglist, the variable "tlist_viki_settings" is already set for 
+you -- references are not displayed by default.
+
+
+================================================================================
                                                     *deplate*
 Deplate~
 
@@ -678,6 +772,6 @@ references, an autogenerated index etc.
 
 --
 (the following is adapted from latex-suite.txt)
-vim:ft=help:fdm=expr:tw=78:ff=unix
+vim:ft=help:fdm=expr:tw=78
 vim:foldexpr=getline(v\:lnum-2)=~"=\\\\{80,}"?"a1"\:(getline(v\:lnum+1)=~"=\\\\{80,}"?"s1"\:"=")
 vim:foldtext=v\:folddashes.substitute(getline(v\:foldstart),"\\\\s*\\\\*.*","","")
