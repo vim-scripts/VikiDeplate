@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 03-Aug-2004.
-" @Revision: 1.3.67
+" @Last Change: 11-Aug-2004.
+" @Revision: 1.3.1.1
 " 
 " Short Description:
 " This plugin adds wiki-like hypertext capabilities to any document. Just type 
@@ -29,7 +29,7 @@ endif
 let s:loaded_viki = 1
 
 let g:vikiDefNil  = ''
-let g:vikiDefSep  = '‡‡‡'
+let g:vikiDefSep  = "\n"
 
 let s:vikiSelfEsc = '\'
 let g:vikiSelfRef = '.'
@@ -478,7 +478,7 @@ endfun
 
 fun! <SID>VikiSelectBackRef(...) "{{{3
     if exists("b:VikiBackFile") && exists("b:VikiBackLine") && exists("b:VikiBackCol")
-        if a:0 >= 1
+        if a:0 >= 1 && a:1 > 0
             let s = a:1
         else
             let s = VikiSelect(b:VikiBackFile, g:vikiDefSep, "Select Back Reference")
@@ -519,7 +519,7 @@ fun! VikiGoBack(...) "{{{3
     let s  = (a:0 >= 1) ? a:1 : -1
     let br = <SID>VikiSelectBackRef(s)
     if br == ""
-        echomsg "Viki: No back reference defined?"
+        echomsg "Viki: No back reference defined? (". s ."/". br .")"
     else
         exe br
         let buf = bufnr("^". vbf ."$")
@@ -899,6 +899,10 @@ ________________________________________________________________________________
 
 
 * Change Log
+
+1.3.1
+- fixed bug when VikiBack was called without a definitiv back-reference
+- fixed problems with latin-1 characters
 
 1.3
 - basic ctags support (see |viki-tags|)

@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 06-Aug-2004.
-" @Revision: 0.354
+" @Last Change: 11-Aug-2004.
+" @Revision: 0.355
 
 if version < 600
   syntax clear
@@ -43,8 +43,7 @@ syn cluster vikiTextstyles contains=vikiBold,vikiContinousBold,vikiItalic,vikiCo
 
 exe 'syn match vikiComment /^\s*'. escape(b:vikiCommentStart, '\/.*^$~[]') .'.*$/ contains=vikiTextstyles,vikiLink,vikiExtendedLink,vikiURL'
 
-
-syn region vikiString start=+^\s\+"\|"\|„+ end=+"[.?!]\?\s\+$\|"\|“+ contains=@vikiTextstyles
+syn region vikiString start=+^\s\+"\|"+ end=+"[.?!]\?\s\+$\|"+ contains=@vikiTextstyles
 
 let b:vikiHeadingStart = '*'
 exe 'syn region vikiHeading start=/\V\^'. escape(b:vikiHeadingStart, '\') .'\+\s\+/ end=/\n/ contains=@vikiTextstyles'

@@ -44,29 +44,41 @@ and run |:helptags| on that directory.
 Customization:                                      *viki-customization*
 It's probably a good idea to check the values of the following variables:
 
-    - |g:vikiUpperCharacters| and |g:vikiLowerCharacters|; for German 
-      character set these variables to something like: >
+    - |g:vikiUpperCharacters| and |g:vikiLowerCharacters|; for the most 
+      commonly used foreign language characters in a Western European 
+      context set these variables to something like (this refers to the 
+      characters allowed in simple viki names and in anchors; for East Asian 
+      languages you probably prefer to use quoted viki names anyway): >
         
         " this is in iso-latin-1
         let g:vikiLowerCharacters = "a-zäöüßáàéèíìóòçñ"
         let g:vikiUpperCharacters = "A-ZÄÖÜ"
 <
-    - |g:vikiUseParentSuffix| (see |viki-names|); I personally prefer this to 
-      be ON >
+    - |g:vikiUseParentSuffix| (see also |viki-names|); I personally prefer 
+      this to be ON >
 
         let g:vikiUseParentSuffix = 1
 <
-    - |vikiNameTypes|
+    - |vikiNameTypes| (see |viki-names|): control which type of viki names you 
+      want to use (this allows you to turn off, e.g., simple viki names)
 
-Also, you might need to configure some external programs like in this example: 
+You might also need to configure some external programs (use the variables 
+g:vikiOpenUrlWith_{PROTOCOL} and g:vikiOpenFileWith_{SUFFIX}) like in this 
+example: 
 >
     let g:vikiOpenUrlWith_mailto = 'thunderbird -compose %{URL}'
+    let g:vikiOpenFileWith_html  = "silent !firefox %{FILE}"
     let g:vikiOpenFileWith_ANY   = "silent !start %{FILE}"
 
-Later on, you might also like to define some intervikis: >
+Later on, you probably want to define some intervikis. A |viki-interviki| is a 
+shortcut to a different viki directory/namespace, so that you have to care 
+less about page names: >
 
     let g:vikiInterSCI        = $HOME ."/Projects/Sci/Ideas"
     let g:vikiInterSCI_suffix = ".txt"
+
+This could then be accessed as SCI::ThisIdea, which would refer to the file 
+"~/Projects/Sci/Ideas/ThisIdea.txt".
 
 In order to use the LaTeX enabled viki variant, add this to your .vimrc file: >
 
@@ -80,7 +92,7 @@ In order to automatically set |deplate| as the compiler for viki files: >
     au FileType viki compiler deplate
 
 If the variables b:getVikiLink or b:getExtVikiLink exist, their values are 
-used as function names for returning the current viki name's definition. A 
+used as _function_ names for returning the current viki name's definition. A 
 viki definition is a "multvalue" (see multvals.vim, vimscript #171) of the 
 three elements name, destination, anchor with g:vikiDefSep as the separator.
 
@@ -136,12 +148,19 @@ A viki name is either:
 
                                                     *viki-interviki*
          c. an "inter wiki" name, where the first part (in upper-case letters) 
-         is a shortcut to some other viki
+         is a shortcut to some other viki, so that you have to care less about 
+         page names
+
             OTHERVIKI::VikiName
             OTHERVIKI::VikiName#there
             OTHERVIKI::[-some name-]
             OTHERVIKI::[-some name-]#there
 
+            E.g., if you had two intervikis defined, say SCI and COMP, you 
+            could the refer to their pages as in: >
+
+                Couldn't SCI::ThisIdeaOfMine be combined with COMP::ThisIdeaOfMine?
+<
             NOTE: An "inter wiki" is defined by setting a variable with the 
             prefix "g:vikiInter". Example:
 
@@ -509,6 +528,7 @@ Functions~
     All protocol names are translated to lower case.
 
 - VikiDefineMarkup(mode)                            *VikiDefineMarkup()*
+
 - VikiDefineHighlighting(mode)                      *VikiDefineHighlighting()*
 
 
@@ -523,7 +543,9 @@ Simple Viki Names [2]:                              *viki-vars-simple-names*
   b:vikiUpperCharacters
     These default to "a-z" and "A-Z" respectively; "international" users 
     should set these variables in their vimrc file to fit their needs
+
 - b:vikiAnchorMarker
+
 - b:vikiSimpleNameRx, b:vikiSimpleNameSimpleRx[1]
 - b:vikiSimpleNameNameIdx, b:vikiSimpleNameDestIdx, b:vikiSimpleNameAnchorIdx
 
@@ -546,37 +568,47 @@ NOTE: [2] These variables are defined by |VikiSetupBuffer()|.
 
 
 File handling:
+
 - g:vikiSpecialFiles, b:vikiSpecialFiles            *vikiSpecialFiles*
     Default value: jpg\|gif\|bmp\|pdf\|dvi\|ps
     A list of extensions for files that should be opened with 
     |VikiOpenSpecialFile()|.
+
 - g:vikiSpecialProtocols, b:vikiSpecialProtocols    *vikiSpecialProtocols*
     Default value: https\?\|ftps\?
     A list of protocolls that should be opened with 
     |VikiOpenSpecialProtocol()|.
+
 - g:vikiUseParentSuffix                             *g:vikiUseParentSuffix*
     Default value: 0
     If true, always append the "parent" file's suffix to the destination file 
-    name.
+    name. I.e. if the current file is "ThisIdea.txt" the the viki name 
+    "OtherIdea" will refer to the file "OtherIdea.txt".
+
 - b:vikiNameSuffix                                  *b:vikiNameSuffix*
     Default value: ""
     Append suffix to the destination file name.
 
 
 Markup:
+
 - g:vikiCommentStart                                *g:vikiCommentStart*
     Default value: %
     Defines the prefix of comments when in "full" viki mode.
+
 - b:vikiCommentStart                                *b:vikiCommentStart*
     In minor mode this variable is set to either:
         - b:commentStart
         - b:ECcommentOpen
         - matchstr(&commentstring, "^\\zs.*\\ze%s")
     In "full" viki mode it's set to |g:vikiCommentStart|.
+
 - g:vikiTypewriterFont                              *g:vikiTypewriterFont*
     See |viki-textstyles|.
+
 - g:vikiHeadingFont                                 *g:vikiHeadingFont*
     See |viki-headings|.
+
 - g:vikiFamily, b:vikiFamily                        *vikiFamily*
     By defining this variable, family specific functions will be called for:
         - VikiSetupBuffer{b:vikiFamily}(state)
@@ -590,8 +622,10 @@ Markup:
 
 
 Etc:
+
 - g:vikiMapMouse                                    *g:vikiMapMouse*
     See |viki-key-bindings|.
+
 - b:vikiNameTypes, g:vikiNameTypes                  *vikiNameTypes*
     Default value: "csSeui"
         s ... Simple viki name 
@@ -602,11 +636,13 @@ Etc:
         u ... URL
     Disable certain types of viki names globally or for a single buffer.
     (experimental, doesn't fully work yet)
+
 - g:vikiSaveHistory                                 *g:vikiSaveHistory*
     Default value: 0
     If genutils.vim is installed, the history data will be saved in 
     |viminfo-file|. Like most of this plugin, this feature is _experimental_
     and is turned off by default.
+
 - g:vikiExplorer                                    *g:vikiExplorer*
     Default: "Sexplore"
     If a viki name points to a directory, we use this command for viewing the 
@@ -685,6 +721,7 @@ could be defined as: \newcommand{\viki}[2][]{#2}
 If b:vikiFamily is set to "LaTeX", then calling |:VikiMinorMode| will use 
 these commands instead of normal viki names. This change can be made permanent 
 by adding this line to your vimrc file: >
+
     au FileType tex let b:vikiFamily="LaTeX"
 <
                                                     *:VikiMinorModeLaTeX*
@@ -705,11 +742,11 @@ simple minded example: >
     let g:vikiLaTeXUserCommands = 'other\|self'
 
     fun! VikiLaTeX_other(args, opts)
-        return 'let dest="'.a:args.'.tex" | let anchor="'.opts.'"'
+        return 'let dest="'.a:args.'.tex" | let anchor="'.a:opts.'"'
     endfun
 
     fun! VikiLaTeX_self(args, opts)
-        return 'let dest="'.g:vikiSelfRef.'" | let anchor="'.opts.'"'
+        return 'let dest="'.g:vikiSelfRef.'" | let anchor="'.a:opts.'"'
     endfun
 
 
@@ -734,8 +771,8 @@ viki names. Example: >
 Ctags~
 
 For ctags support (e.g. in conjunction with taglist) add this to your .ctags 
-file (this assumes that *.txt files are in viki mode or modify the file suffix 
-if necessary): >
+file (this assumes that *.txt files are in viki mode; you have to adjust the 
+file suffix if you choose a different suffix): >
 
     --langdef=deplate
     --langmap=deplate:.txt
@@ -747,7 +784,7 @@ if necessary): >
     --regex-deplate=/([a-z]+:\/\/[A-Za-z0-9.:%?=&_~@\/|-]+)/\1/u,url/
 
 For use with taglist, the variable "tlist_viki_settings" is already set for 
-you -- references are not displayed by default.
+you.
 
 
 ================================================================================
@@ -763,10 +800,10 @@ deplate is a ruby script/library that converts viki markup to:
 
 Download the latest version from http://sourceforge.net/projects/deplate/.
 
-deplate's markup is not 100% identical with the standard viki mode's one. 
+deplate's markup is not 100% identical with the standard viki mode's one.  
 E.g., it doesn't support underline, italic markup. deplate sometimes failes 
-with cryptic error messages and it doesn't always do what would expect from 
-it. On the other hand, it provides for inline LaTeX code, footnotes, 
+with cryptic error messages and it doesn't always give the results one would 
+expect. On the other hand, it provides for inline LaTeX code, footnotes, 
 references, an autogenerated index etc.
 
 
