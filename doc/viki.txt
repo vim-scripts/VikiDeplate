@@ -16,7 +16,7 @@ activating a reference to an image, a webpage etc. will view that resource in
 an external viewer.
 
 From http://sourceforge.net/projects/deplate/ you can download a ruby based 
-tool to convert viki markup to html or latex. On its homepage 
+tool to convert viki markup to LaTeX, HTML, or DocBook. On its homepage 
 (http://deplate.sf.net) you can read a more detailled specification of the 
 markup.
 
@@ -25,7 +25,9 @@ Just type |:VikiMinorMode| and all wiki names and URLs will be highlighted.
 When the cursor is over a wiki name, you can press <c-cr> to jump to (or 
 create) the referred page. Pressing <LocalLeader>vb brings you back to the 
 original document. Alternatively, you can use <m-leftmouse> and <m-rightmouse> 
-to jump back and forth.
+to jump back and forth. (NOTE: In minor mode, it's possible that viki words 
+and URLs are not highlighted when they are included in some syntactic 
+regions.)
 
 FULL WIKI MODE:
 In full mode, viki becomes a personal wiki 
@@ -93,6 +95,11 @@ In order to automatically set |deplate| as the compiler for viki files: >
     let g:deplatePrg = "deplate -x -X "
     au FileType viki compiler deplate
 
+In order to check for links to inexistent files on reentering a buffer after 
+creating a new viki page, add this to your .vimrc file: >
+
+    autocmd BufEnter * VikiCheckInexistent
+
 If the variables b:getVikiLink or b:getExtVikiLink exist, their values are 
 used as _function_ names for returning the current viki name's definition. A 
 viki definition is a "multvalue" (see multvals.vim, vimscript #171) of the 
@@ -102,10 +109,12 @@ If the variables b:editVikiPage or b:createVikiPage exist, their values are
 interpreted as _command_ names for editing readable or creating new wiki 
 pages.
 
-For a better highlighting of viki files, also check out these two variables:
+For a better highlighting of viki files, also check out these variables:
 
     - |g:vikiTypewriterFont| (see |viki-textstyles|)
     - |g:vikiHeadingFont| (see |viki-headings|)
+    - |g:vikiHyperLinkColor|
+    - |g:vikiInexistentColor|
 
                                                     *viki-indent-disable*
 In order to disable the indentation plugin, define the variable g:vikiNoIndent 
@@ -211,7 +220,7 @@ A viki name is either:
         will be replaced with $HOME.
 
                                                     *viki-urls*
-    3. an URL (see |g:vikiUrlRx|)
+    3. an URL
         It is assumed that these URLs should be opened with an external 
         program; this behaviour can be changed by redefining the function 
         |VikiOpenSpecialProtocol()|.
@@ -443,7 +452,16 @@ Default Key Binding~
 a wiki syntax group -- if the second argument is 1 it tries to interpret the 
 text under the cursor as a wiki name anyway.
 
+<LocalLeader><c-r> or <LocalLeader>vs ... Open in a new window
+<LocalLeader>vv ... Open in a new window but split vertically
+    - see also |vikiSplit|
+
+<LocalLeader>v1 - <LocalLeader>v4 ... Open in window 1-4
+
 <LocalLeader>vb ... |VikiGoBack()|
+
+<LocalLeader>vd ... |:VikiMarkInexistent| in the whole document
+<LocalLeader>vp ... |:VikiMarkInexistent| in the current paragraph
 
 If |g:vikiMapMouse| is true then these mappings are active, too:
 <m-leftmouse> ... |VikiMaybeFollowLink()|
@@ -475,6 +493,12 @@ Commands~
                                                     *:VikiFind*
                                                     *:VikiFindNext* *:VikiFindPrev*
 - VikiFindNext, VikiFindPrev (find the next/previous viki name or URL)
+
+                                                    *:VikiMarkInexistent*
+                                                    *:VikiMarkInexistentInParagraph*
+- VikiMarkInexistent, VikiMarkInexistentInParagraph
+  Update the highlighting of links to inexistent files. VikiMarkInexistent 
+  can take a range as argument.
 
 
 ================================================================================
@@ -615,6 +639,14 @@ Markup:
 - g:vikiHeadingFont                                 *g:vikiHeadingFont*
     See |viki-headings|.
 
+- g:vikiHyperLinkColor                              *g:vikiHyperLinkColor*
+    Default: DarkBlue or LightBlue (depending on 'background')
+    The color of hyperlinks, viki names etc.
+
+- g:vikiInexistentColor                             *g:vikiInexistentColor*
+    Default: Red
+    The color of links to inexistent files.
+
 - g:vikiFamily, b:vikiFamily                        *vikiFamily*
     By defining this variable, family specific functions will be called for:
         - VikiSetupBuffer{b:vikiFamily}(state)
@@ -631,6 +663,11 @@ Etc:
 
 - g:vikiMapMouse                                    *g:vikiMapMouse*
     See |viki-key-bindings|.
+
+- b:vikiSplit, g:vikiSplit                          *vikiSplit*
+    -1 ... open all links in a new windows
+    -2 ... open all links in a new windows but split vertically
+    Any positive number ... open always in this window
 
 - b:vikiNameTypes, g:vikiNameTypes                  *vikiNameTypes*
     Default value: "csSeui"
@@ -653,6 +690,11 @@ Etc:
     Default: "Sexplore"
     If a viki name points to a directory, we use this command for viewing the 
     directory contents.
+
+- g:vikiMarkInexistent                              *g:vikiMarkInexistent*
+    Default: 1
+    If non-zero, highligh links to existent or inexistent files in different 
+    colours.
 
 
 ================================================================================
@@ -801,15 +843,15 @@ deplate is a ruby script/library that converts viki markup to:
 
     - html
     - htmlslides
-    - htmlindex
     - latex
+    - docbook
 
 Download the latest version from http://sourceforge.net/projects/deplate/.
 
 deplate's markup is not 100% identical with the standard viki mode's one.  
 E.g., it doesn't support underline, italic markup. deplate sometimes failes 
 with cryptic error messages and it doesn't always give the results one would 
-expect. On the other hand, it provides for inline LaTeX code, footnotes, 
+expect. On the other hand, it features inclusion of LaTeX snippets, footnotes, 
 references, an autogenerated index etc.
 
 

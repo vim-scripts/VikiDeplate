@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 19-Aug-2004.
-" @Revision: 1.4.0.4
+" @Last Change: 09-Sep-2004.
+" @Revision: 1.5.0.145
 " 
 " Short Description:
 " This plugin adds wiki-like hypertext capabilities to any document. Just type 
@@ -19,7 +19,6 @@
 " - genutils.vim (vimscript #197 for saving back references)
 " - kpsewhich (not a vim plugin :-) for vikiLaTeX
 "
-
 " Change Log: (See bottom of file)
 " 
 
@@ -33,6 +32,8 @@ let g:vikiDefSep  = "\n"
 
 let s:vikiSelfEsc = '\'
 let g:vikiSelfRef = '.'
+
+let s:vikiInexistentRx = ""
 
 if !exists("tlist_viki_settings") "{{{2
     let tlist_viki_settings="deplate;s:structure"
@@ -62,12 +63,25 @@ if !exists("g:vikiSpecialFilesExceptions") "{{{2
     let g:vikiSpecialFilesExceptions = ""
 endif
 
+if !exists("g:vikiHyperLinkColor")
+    if &background == "light"
+        let g:vikiHyperLinkColor = "DarkBlue"
+    else
+        let g:vikiHyperLinkColor = "LightBlue"
+    endif
+endif
+
+if !exists("g:vikiInexistentColor")
+    let g:vikiInexistentColor = "Red"
+endif
+
 if !exists("g:vikiMapMouse")        | let g:vikiMapMouse = 1          | endif "{{{2
 if !exists("g:vikiUseParentSuffix") | let g:vikiUseParentSuffix = 0   | endif "{{{2
 if !exists("g:vikiAnchorMarker")    | let g:vikiAnchorMarker = "#"    | endif "{{{2
 if !exists("g:vikiNameTypes")       | let g:vikiNameTypes = "csSeui"  | endif "{{{2
 if !exists("g:vikiSaveHistory")     | let g:vikiSaveHistory = 0       | endif "{{{2
 if !exists("g:vikiExplorer")        | let g:vikiExplorer = "Sexplore" | endif "{{{2
+if !exists("g:vikiMarkInexistent")  | let g:vikiMarkInexistent = 1    | endif "{{{2
 
 if !exists("g:vikiOpenFileWith_ANY") && has("win32") "{{{2
     let g:vikiOpenFileWith_ANY = "silent !cmd /c start %{FILE}"
@@ -148,10 +162,15 @@ fun! <SID>AddToRegexp(regexp, pattern) "{{{3
     endif
 endfun
 
-fun! <SID>VikiFind(flag) "{{{3
+fun! <SID>VikiFindRx() "{{{3
     let rx = <SID>AddToRegexp("", b:vikiSimpleNameSimpleRx)
     let rx = <SID>AddToRegexp(rx, b:vikiExtendedNameSimpleRx)
     let rx = <SID>AddToRegexp(rx, b:vikiUrlSimpleRx)
+    return rx
+endf
+
+fun! <SID>VikiFind(flag) "{{{3
+    let rx = <SID>VikiFindRx()
     if rx != ""
         call search(rx, a:flag)
     endif
@@ -159,6 +178,76 @@ endfun
 
 command! VikiFindNext call <SID>VikiFind("")
 command! VikiFindPrev call <SID>VikiFind("b")
+
+fun! <SID>VikiMarkInexistent(line1, line2)
+    let rx = <SID>VikiFindRx()
+    let li = line(".")
+    let co = col(".")
+    if a:line1 > 0
+        exe "norm! ". a:line1 ."G"
+    else
+        go
+    end
+    if a:line2 > 0
+        let max = a:line2
+    else
+        let max = line("$")
+    endif
+    if line(".") == 1 && line("$") == max
+        let s:vikiInexistentRx = ""
+        syntax clear vikiInexistent
+    endif
+    if line(".") == 1
+        norm! G$
+    else
+        norm! k$
+    end
+    let t = search(rx, "w")
+    while t > 0 && t <= max
+        " if VikiIsInRegion(t) == 0
+            let def = <SID>VikiGetLink("-", 1)
+            if def == "-"
+                echom "Internal error: VikiMarkInexistent: ". def
+            else
+                let part  = MvElementAt(def, g:vikiDefSep, 3)
+                let dest  = MvElementAt(def, g:vikiDefSep, 1)
+                if part =~ b:vikiSimpleNameSimpleRx
+                    let check = 1
+                    let partx = '\<'. escape(part, "'\"\\/") .'\>'
+                elseif part =~ b:vikiExtendedNameSimpleRx && !(dest =~ b:vikiUrlSimpleRx)
+                    let check = 1
+                    let partx = escape(part, "'\"\\/")
+                else
+                    let check = 0
+                endif
+                if check && dest != g:vikiSelfRef && !isdirectory(dest) && !filereadable(dest)
+                    let s:vikiInexistentRx = MvAddElement(s:vikiInexistentRx, '\|', partx)
+                endif
+            endif
+        " endif
+        let t = search(rx, "W")
+    endwh
+    if s:vikiInexistentRx != ""
+        let rx = strpart(s:vikiInexistentRx, 0, strlen(s:vikiInexistentRx) - 2)
+        exe 'syntax match vikiInexistent /\V\('. rx .'\)/'
+    endif
+    exe "norm! ". li ."G". co ."|"
+endfun
+
+command! -range=% VikiMarkInexistent call <SID>VikiMarkInexistent(<line1>, <line2>)
+command! VikiMarkInexistentInParagraph norm! vip:VikiMarkInexistent<cr>
+
+fun! <SID>VikiCheckInexistent()
+    if g:vikiMarkInexistent && exists("b:vikiCheckInexistent") && b:vikiCheckInexistent > 0
+        " call <SID>VikiMarkInexistent(b:vikiCheckInexistent, b:vikiCheckInexistent + 1)
+        VikiMarkInexistent
+        let b:vikiCheckInexistent = 0
+    endif
+endfun
+
+command! VikiCheckInexistent call <SID>VikiCheckInexistent()
+
+autocmd BufEnter * VikiCheckInexistent
 
 fun! VikiSetBufferVar(name, ...) "{{{3
     if !exists("b:".a:name)
@@ -267,7 +356,7 @@ fun! VikiSetupBuffer(state, ...) "{{{3
         let b:vikiSimpleNameRx = '\C\(\(\<['. g:vikiUpperCharacters .']\+::\)\?\('
                     \ . quotedWikiName . simpleWikiName .'\)\)'
                     \ .'\(#\('. b:vikiAnchorNameRx .'\)\>\)\?'
-        let b:vikiSimpleNameSimpleRx = '\C\(\(\<['.g:vikiUpperCharacters.']\+::\)\?'
+        let b:vikiSimpleNameSimpleRx = '\C\(\<['.g:vikiUpperCharacters.']\+::\)\?\('
                     \ . quotedWikiName . simpleWikiName .'\)'
                     \ .'\(#'. b:vikiAnchorNameRx .'\>\)\?'
         let b:vikiSimpleNameNameIdx   = 1
@@ -332,14 +421,11 @@ fun! VikiDefineHighlighting(state) "{{{3
     else
         command! -nargs=+ VikiHiLink hi def link <args>
     endif
-    
-    if &background == "light"
-        hi vikiHyperLink term=bold,underline cterm=bold,underline gui=bold,underline 
-                    \ ctermbg=DarkBlue guifg=DarkBlue
-    else
-        hi vikiHyperLink term=bold,underline cterm=bold,underline gui=bold,underline
-                    \ ctermbg=LightBlue guifg=LightBlue
-    endif
+
+    exe "hi vikiInexistent term=bold,underline cterm=bold,underline gui=bold,underline". 
+                \ " ctermbg=". g:vikiInexistentColor ." guifg=". g:vikiInexistentColor
+    exe "hi vikiHyperLink term=bold,underline cterm=bold,underline gui=bold,underline". 
+                    \ " ctermbg=". g:vikiHyperLinkColor ." guifg=". g:vikiHyperLinkColor
     
     if b:vikiNameTypes =~? "s"
         VikiHiLink vikiLink vikiHyperLink
@@ -386,8 +472,15 @@ fun! VikiMinorMode(state) "{{{3
             "inoremap <buffer> <c-cr> <c-r>=VikiMaybeFollowLink(0)<cr>
             nnoremap <buffer> <silent> <c-cr> :call VikiMaybeFollowLink(0,1)<cr>
             inoremap <buffer> <silent> <c-cr> <c-o>:call VikiMaybeFollowLink(0,1)<cr>
-            nnoremap <buffer> <silent> <LocalLeader><c-cr> :call VikiMaybeFollowLink(0,1,1)<cr>
-            inoremap <buffer> <silent> <LocalLeader><c-cr> <c-o>:call VikiMaybeFollowLink(0,1,1)<cr>
+            nnoremap <buffer> <silent> <LocalLeader><c-cr> :call VikiMaybeFollowLink(0,1,-1)<cr>
+            nnoremap <buffer> <silent> <LocalLeader>vs :call VikiMaybeFollowLink(0,1,-1)<cr>
+            nnoremap <buffer> <silent> <LocalLeader>vv :call VikiMaybeFollowLink(0,1,-2)<cr>
+            nnoremap <buffer> <silent> <LocalLeader>v1 :call VikiMaybeFollowLink(0,1,1)<cr>
+            nnoremap <buffer> <silent> <LocalLeader>v2 :call VikiMaybeFollowLink(0,1,2)<cr>
+            nnoremap <buffer> <silent> <LocalLeader>v3 :call VikiMaybeFollowLink(0,1,3)<cr>
+            nnoremap <buffer> <silent> <LocalLeader>v4 :call VikiMaybeFollowLink(0,1,4)<cr>
+            noremap <buffer> <silent> <LocalLeader>vd :VikiMarkInexistent<cr>
+            noremap <buffer> <silent> <LocalLeader>vp mv:VikiMarkInexistentInParagraph<cr>g'v
             if g:vikiMapMouse
                 nnoremap <buffer> <silent> <m-leftmouse> <leftmouse>:call VikiMaybeFollowLink(0,1)<cr>
                 inoremap <buffer> <silent> <m-leftmouse> <leftmouse><c-o>:call VikiMaybeFollowLink(0,1)<cr>
@@ -436,6 +529,18 @@ fun! <SID>AddVarToMultVal(var, val) "{{{3
         exe "let ". a:var ."=MvAddElement('', '". g:vikiDefSep ."', ". a:val .")"
         return -1
     endif
+endfun
+
+fun! VikiIsInRegion(line)
+    let i   = 0
+    let max = col("$")
+    while i < max
+        if synIDattr(synID(a:line, i, 1), "name") == "vikiRegion"
+            return 1
+        endif
+        let i = i + 1
+    endw
+    return 0
 endfun
 
 fun! <SID>VikiSetBackRef(file, li, co) "{{{3
@@ -574,7 +679,17 @@ endfun
 fun! <SID>VikiOpenLink(filename, anchor, ...) "{{{3
     let create  = a:0 >= 1 ? a:1 : 0
     let postcmd = a:0 >= 2 ? a:2 : ""
-    let split   = a:0 >= 3 ? a:3 : 0
+    let winNr   = a:0 >= 3 ? a:3 : 0
+    
+    if winNr == 0
+        if exists("b:vikiSplit")
+            let winNr = b:vikiSplit
+        elseif exists("g:vikiSplit")
+            let winNr = g:vikiSplit
+        else
+            let winNr = 0
+        endif
+    endif
 
     let li = line(".")
     let co = col(".")
@@ -583,8 +698,23 @@ fun! <SID>VikiOpenLink(filename, anchor, ...) "{{{3
     " let buf = bufnr("^". simplify(a:filename) ."$")
     let buf = bufnr("^". a:filename ."$")
     " let buf = bufnr(a:filename)
-    if split
-        wincmd s
+    if winNr != 0
+        let wm = <SID>HowManyWindows()
+        if winNr == -2
+            wincmd v
+        elseif wm == 1 || winNr == -1
+            wincmd s
+        else
+            " if winNr == -1
+                " let wc = winnr()
+                " if wc < wm
+                    " let winNr = wc + 1
+                " else
+                    " let winNr = wc - 1
+                " endif
+            " endif
+            exec winNr ."wincmd w"
+        end
     endif
     if buf >= 0
         exe "buffer ".buf
@@ -606,6 +736,14 @@ fun! <SID>VikiOpenLink(filename, anchor, ...) "{{{3
         exec postcmd
     endif
 endfun
+
+fun! <SID>HowManyWindows()
+    let i = 1
+    while winbufnr(i) > 0
+        let i = i + 1
+    endwh
+    return i - 1
+endf
 
 fun! <SID>DecodeFileUrl(dest) "{{{3
     let dest = substitute(a:dest, '^\c/*\([a-z]\)|', '\1:', "")
@@ -636,7 +774,7 @@ fun! <SID>DecodeFileUrl(dest) "{{{3
 endfun
 
 fun! <SID>VikiFollowLink(def, ...) "{{{3
-    let split  = a:0 >= 1 ? a:1 : 0
+    let winNr  = a:0 >= 1 ? a:1 : 0
     let name   = MvElementAt(a:def, g:vikiDefSep, 0)
     let dest   = MvElementAt(a:def, g:vikiDefSep, 1)
     let anchor = MvElementAt(a:def, g:vikiDefSep, 2)
@@ -660,11 +798,15 @@ fun! <SID>VikiFollowLink(def, ...) "{{{3
                         \ !(dest =~ g:vikiSpecialFilesExceptions))
                 call VikiOpenSpecialFile(dest)
             elseif filereadable(dest)                 "reference to a local, already existing file
-                call <SID>VikiOpenLink(dest, anchor, 0, "", split)
+                call <SID>VikiOpenLink(dest, anchor, 0, "", winNr)
             elseif isdirectory(dest)
                 exe g:vikiExplorer ." ". dest
-            elseif input("File doesn't exists. Create '".dest."'? (Y/n) ") != "n"
-                call <SID>VikiOpenLink(dest, anchor, 1)
+            else
+                let ok = input("File doesn't exists. Create '".dest."'? (Y/n) ", "y")
+                if ok != "" && ok != "n"
+                    let b:vikiCheckInexistent = line(".")
+                    call <SID>VikiOpenLink(dest, anchor, 1)
+                endif
             endif
         endif
     endif
@@ -679,14 +821,16 @@ fun! <SID>MakeVikiDefPart(txt) "{{{3
     endif
 endfun
 
-fun! VikiMakeDef(name, dest, anchor) "{{{3
-    if a:name =~ g:vikiDefSep || a:dest =~ g:vikiDefSep || a:anchor =~ g:vikiDefSep
+fun! VikiMakeDef(name, dest, anchor, part) "{{{3
+    if a:name =~ g:vikiDefSep || a:dest =~ g:vikiDefSep || a:anchor =~ g:vikiDefSep 
+                \ || a:part =~ g:vikiDefSep
         throw "Viki: A viki definition must not include ".g:vikiDefSep
-                    \ .": ".a:name.", ".a:dest.", ".a:anchor
+                    \ .": ".a:name.", ".a:dest.", ".a:anchor ." (". a:part .")"
     else
         let arr = MvAddElement("",  g:vikiDefSep, <SID>MakeVikiDefPart(a:name))
         let arr = MvAddElement(arr, g:vikiDefSep, <SID>MakeVikiDefPart(a:dest))
         let arr = MvAddElement(arr, g:vikiDefSep, <SID>MakeVikiDefPart(a:anchor))
+        let arr = MvAddElement(arr, g:vikiDefSep, <SID>MakeVikiDefPart(a:part))
         return arr
     endif
 endfun
@@ -725,7 +869,7 @@ fun! <SID>GetVikiLink(erx, nameIdx, destIdx, anchorIdx, ignoreSyntax) "{{{3
             let name   = <SID>GetVikiNamePart(part, a:erx, a:nameIdx,   "no name")
             let dest   = <SID>GetVikiNamePart(part, a:erx, a:destIdx,   "no destination")
             let anchor = <SID>GetVikiNamePart(part, a:erx, a:anchorIdx, "no anchor")
-            return VikiMakeDef(name, dest, anchor)
+            return VikiMakeDef(name, dest, anchor, part)
         elseif a:ignoreSyntax
             return ""
         else
@@ -795,13 +939,15 @@ fun! VikiCompleteSimpleNameDef(def) "{{{3
         let rdest = g:vikiDefNil
     endif
     let anchor = MvElementAt(a:def, g:vikiDefSep, 2)
-    return VikiMakeDef(name, rdest, anchor)
+    let part   = MvElementAt(a:def, g:vikiDefSep, 3)
+    return VikiMakeDef(name, rdest, anchor, part)
 endfun
 
 fun! VikiCompleteExtendedNameDef(def) "{{{3
     let name   = MvElementAt(a:def, g:vikiDefSep, 0)
     let dest   = MvElementAt(a:def, g:vikiDefSep, 1)
     let anchor = MvElementAt(a:def, g:vikiDefSep, 2)
+    let part   = MvElementAt(a:def, g:vikiDefSep, 3)
     if dest == g:vikiDefNil
         if anchor == g:vikiDefNil
             throw "Viki: Malformed extended viki name (no destination): ".a:def
@@ -819,7 +965,16 @@ fun! VikiCompleteExtendedNameDef(def) "{{{3
     if name == g:vikiDefNil
         let name = dest
     endif
-    return VikiMakeDef(name, dest, anchor)
+    if dest != g:vikiSelfRef && fnamemodify(dest, ":p:h") == expand("%:p:h")
+        if fnamemodify(dest, ":e") == ""
+            if exists("b:vikiNameSuffix")
+                let dest = dest.b:vikiNameSuffix
+            elseif g:vikiUseParentSuffix
+                let dest = dest.expand("%:e")
+            endif
+        endif
+    endif
+    return VikiMakeDef(name, dest, anchor, part)
 endfun
 
 fun! <SID>VikiLinkNotFoundEtc(oldmap, ignoreSyntax) "{{{3
@@ -839,8 +994,7 @@ endfun
 " ignoreSyntax: If there isn't a viki syntax group under the cursor:
 "   0 ... no viki name found
 "   1 ... try to find a viki name matching a the viki regexp
-fun! VikiMaybeFollowLink(oldmap, ignoreSyntax, ...) "{{{3
-    let split = a:0 >= 1 ? a:1 : 0
+fun! <SID>VikiGetLink(oldmap, ignoreSyntax) "{{{3
     let synName = synIDattr(synID(line('.'),col('.'),0),"name")
     if synName ==# "vikiLink"
         let vikiType = 1
@@ -864,7 +1018,7 @@ fun! VikiMaybeFollowLink(oldmap, ignoreSyntax, ...) "{{{3
                             \ b:vikiSimpleNameDestIdx, b:vikiSimpleNameAnchorIdx, a:ignoreSyntax)
             endif
             if def != ""
-                return <SID>VikiFollowLink( VikiDispatchOnFamily("VikiCompleteSimpleNameDef", def), split )
+                return VikiDispatchOnFamily("VikiCompleteSimpleNameDef", def)
             endif
         elseif vikiType == 2 && b:vikiNameTypes =~# "e"
             if exists("b:getExtVikiLink")
@@ -874,7 +1028,7 @@ fun! VikiMaybeFollowLink(oldmap, ignoreSyntax, ...) "{{{3
                             \ b:vikiExtendedNameDestIdx, b:vikiExtendedNameAnchorIdx, a:ignoreSyntax)
             endif
             if def != ""
-                return <SID>VikiFollowLink( VikiDispatchOnFamily("VikiCompleteExtendedNameDef", def), split )
+                return VikiDispatchOnFamily("VikiCompleteExtendedNameDef", def)
             endif
         elseif vikiType == 3 && b:vikiNameTypes =~# "u"
             if exists("b:getURLViki")
@@ -884,7 +1038,7 @@ fun! VikiMaybeFollowLink(oldmap, ignoreSyntax, ...) "{{{3
                             \ b:vikiUrlDestIdx, b:vikiUrlAnchorIdx, a:ignoreSyntax)
             endif
             if def != ""
-                return <SID>VikiFollowLink( VikiDispatchOnFamily("VikiCompleteExtendedNameDef", def), split )
+                return VikiDispatchOnFamily("VikiCompleteExtendedNameDef", def)
             endif
         endif
         if tryNext && vikiType > 0 && vikiType < 3
@@ -893,7 +1047,17 @@ fun! VikiMaybeFollowLink(oldmap, ignoreSyntax, ...) "{{{3
             break
         endif
     endwh
-    call <SID>VikiLinkNotFoundEtc(a:oldmap, vikiType)
+    return ""
+endfun
+
+fun! VikiMaybeFollowLink(oldmap, ignoreSyntax, ...) "{{{3
+    let winNr = a:0 >= 1 ? a:1 : 0
+    let def = <SID>VikiGetLink(a:oldmap, a:ignoreSyntax)
+    if def != ""
+        return <SID>VikiFollowLink(def, winNr)
+    else
+        call <SID>VikiLinkNotFoundEtc(a:oldmap, ignoreSyntax)
+    endif
 endfun
 
 finish
@@ -908,6 +1072,16 @@ ________________________________________________________________________________
 
 
 * Change Log
+1.5
+- distinguish between links to existing and non-existing files
+- added key bindings <LL>vs (split) and <LL>vv (split vertically)
+- added key bindings <LL>v1 through to <LL>v4: open the viki link 
+under cursor in the windows 1 to 4
+- handle variables g:vikiSplit, b:vikiSplit
+- don't indent regions
+- regions can be indented
+- When a file doesn't exist, ESC or "n" aborts creation
+
 1.4
 - fixed problem with table highlighting that could cause vim to hang
 - it is now possible to selectivly disable simple or quoted viki names

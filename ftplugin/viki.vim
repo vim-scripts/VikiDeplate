@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 19-Aug-2004.
-" @Revision: 14
+" @Last Change: 08-Sep-2004.
+" @Revision: 20
 
 if exists("b:did_ftplugin")
   finish
@@ -35,7 +35,7 @@ if !hasmapto(":VikiFind")
     nnoremap <buffer> <c-s-tab> :VikiFindPrev<cr>
 endif
 
-" compiler viki
+" compiler deplate
 
 let b:vikiEnabled = 2
 
