@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     28-Jän-2004.
-" @Last Change: 09-Aug-2004.
-" @Revision:    0.125
+" @Last Change: 19-Aug-2004.
+" @Revision:    0.126
 
 if &cp || exists("s:loaded_vikiLatex")
     finish

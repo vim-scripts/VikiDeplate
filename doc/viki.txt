@@ -28,10 +28,12 @@ original document. Alternatively, you can use <m-leftmouse> and <m-rightmouse>
 to jump back and forth.
 
 FULL WIKI MODE:
-Set 'filetype' to viki or execute |:VikiMode|. The full wiki mode is like the 
-minor mode but with folding support, syntax highlighting (for headings, lists, 
-tables, textstyles etc.), and additional key bindings (i.e., you can press 
-<c-tab> or <s-c-tab> to move the cursor to the next/previous viki name).
+In full mode, viki becomes a personal wiki 
+(http://c2.com/cgi/wiki?PersonalWiki). Set 'filetype' to viki or execute 
+|:VikiMode|. The full wiki mode is like the minor mode but with folding 
+support, syntax highlighting (for headings, lists, tables, textstyles etc.), 
+and additional key bindings (i.e., you can press <c-tab> or <s-c-tab> to move 
+the cursor to the next/previous viki name).
 
 
 ================================================================================
@@ -104,6 +106,10 @@ For a better highlighting of viki files, also check out these two variables:
 
     - |g:vikiTypewriterFont| (see |viki-textstyles|)
     - |g:vikiHeadingFont| (see |viki-headings|)
+
+                                                    *viki-indent-disable*
+In order to disable the indentation plugin, define the variable g:vikiNoIndent 
+and set it to whatever you want.
 
 
 ===============================================================================
@@ -273,12 +279,12 @@ Lists: (indented)~
                     a. Item a
                     B. Item B
         # Item
-            #. Item 1
-            #. Item 2
-                ?. Item A
-                ?. Item B
+            # Item 1
+            # Item 2
+                ? Item A
+                ? Item B
 
-    NOTE: "#" (unordered lists) and "#." (ordered lists) are the preferred 
+    NOTE: "?" (unordered lists) and "#" (ordered lists) are the preferred 
     markers.
 
 

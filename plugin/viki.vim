@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 11-Aug-2004.
-" @Revision: 1.3.1.1
+" @Last Change: 19-Aug-2004.
+" @Revision: 1.4.0.4
 " 
 " Short Description:
 " This plugin adds wiki-like hypertext capabilities to any document. Just type 
@@ -247,19 +247,29 @@ fun! VikiSetupBuffer(state, ...) "{{{3
     let b:vikiAnchorNameRx         = '['. g:vikiLowerCharacters .']['. 
                 \ g:vikiLowerCharacters . g:vikiUpperCharacters .'_0-9]\+'
     
-    if b:vikiNameTypes =~# "s" && !(dontSetup =~# "s")
-        let b:vikiSimpleNameRx = '\C\(\(\<['.g:vikiUpperCharacters.']\+::\)\?\('. 
-                    \ b:vikiSimpleNameQuoteBeg . vikiSimpleNameQuoteChars 
-                    \ .'\{-}'. b:vikiSimpleNameQuoteEnd 
-                    \ .'\|\<['. g:vikiUpperCharacters .']['. g:vikiLowerCharacters .']\+\(['.
-                    \ g:vikiUpperCharacters.']['.g:vikiLowerCharacters.'0-9]\+\)\+\>\)\)\(#\('.
-                    \ b:vikiAnchorNameRx .'\)\>\)\?'
-        let b:vikiSimpleNameSimpleRx = '\C\(\(\<['.g:vikiUpperCharacters.']\+::\)\?'. 
-                    \ b:vikiSimpleNameQuoteBeg . vikiSimpleNameQuoteChars 
-                    \ .'\{-}'. b:vikiSimpleNameQuoteEnd 
-                    \ .'\|\<['.g:vikiUpperCharacters.']['.g:vikiLowerCharacters.']\+\(['.
-                    \ g:vikiUpperCharacters.']['.g:vikiLowerCharacters.'0-9]\+\)\+\>\)\(#'.
-                    \ b:vikiAnchorNameRx .'\>\)\?'
+    if b:vikiNameTypes =~? "s" && !(dontSetup =~? "s")
+        if b:vikiNameTypes =~# "S" && !(dontSetup =~# "S")
+            let quotedWikiName = b:vikiSimpleNameQuoteBeg . vikiSimpleNameQuoteChars 
+                        \ .'\{-}'. b:vikiSimpleNameQuoteEnd
+        else
+            let quotedWikiName = ""
+        endif
+        if b:vikiNameTypes =~# "s" && !(dontSetup =~# "s")
+            let simpleWikiName = '\<['. g:vikiUpperCharacters .']['. g:vikiLowerCharacters
+                        \ .']\+\(['. g:vikiUpperCharacters.']['.g:vikiLowerCharacters
+                        \ .'0-9]\+\)\+\>'
+            if quotedWikiName != ""
+                let quotedWikiName = quotedWikiName .'\|'
+            endif
+        else
+            let simpleWikiName = ""
+        endif
+        let b:vikiSimpleNameRx = '\C\(\(\<['. g:vikiUpperCharacters .']\+::\)\?\('
+                    \ . quotedWikiName . simpleWikiName .'\)\)'
+                    \ .'\(#\('. b:vikiAnchorNameRx .'\)\>\)\?'
+        let b:vikiSimpleNameSimpleRx = '\C\(\(\<['.g:vikiUpperCharacters.']\+::\)\?'
+                    \ . quotedWikiName . simpleWikiName .'\)'
+                    \ .'\(#'. b:vikiAnchorNameRx .'\>\)\?'
         let b:vikiSimpleNameNameIdx   = 1
         let b:vikiSimpleNameDestIdx   = 0
         let b:vikiSimpleNameAnchorIdx = 6
@@ -272,9 +282,9 @@ fun! VikiSetupBuffer(state, ...) "{{{3
     endif
    
     if b:vikiNameTypes =~# "u" && !(dontSetup =~# "u")
-        let b:vikiUrlRx = '\<\(\('.b:vikiSpecialProtocols.'\):[A-Za-z0-9.:%?=&_~@/|-]\+\)'.
+        let b:vikiUrlRx = '\<\(\('.b:vikiSpecialProtocols.'\):[A-Za-z0-9.:%?=&_~@$/|-]\+\)'.
                     \ '\(#\([A-Za-z0-9]\+\)\>\)\?'
-        let b:vikiUrlSimpleRx = '\<\('. b:vikiSpecialProtocols .'\):[A-Za-z0-9.:%?=&_~@/|-]\+'.
+        let b:vikiUrlSimpleRx = '\<\('. b:vikiSpecialProtocols .'\):[A-Za-z0-9.:%?=&_~@$/|-]\+'.
                     \ '\(#[A-Za-z0-9]\+\>\)\?'
         let b:vikiUrlNameIdx   = 0
         let b:vikiUrlDestIdx   = 1
@@ -289,9 +299,9 @@ fun! VikiSetupBuffer(state, ...) "{{{3
     
     if b:vikiNameTypes =~# "e" && !(dontSetup =~# "e")
         let b:vikiExtendedNameRx = '\[\[\(\('.b:vikiSpecialProtocols.'\)://[^]]\+\|[^]#]\+\)\?'.
-                    \ '\(#\('. b:vikiAnchorNameRx .'\)\)\?\]\(\[\([^]#]\+\)\]\)\?[!~]*\]'
+                    \ '\(#\('. b:vikiAnchorNameRx .'\)\)\?\]\(\[\([^]#]\+\)\]\)\?[!~\-]*\]'
         let b:vikiExtendedNameSimpleRx = '\[\[\('. b:vikiSpecialProtocols .'://[^]]\+\|[^]#]\+\)\?'.
-                    \ '\(#'. b:vikiAnchorNameRx .'\)\?\]\(\[[^]#]\+\]\)\?[!~]*\]'
+                    \ '\(#'. b:vikiAnchorNameRx .'\)\?\]\(\[[^]#]\+\]\)\?[!~\-]*\]'
         let b:vikiExtendedNameNameIdx   = 6
         let b:vikiExtendedNameDestIdx   = 1
         let b:vikiExtendedNameAnchorIdx = 4
@@ -305,7 +315,7 @@ fun! VikiSetupBuffer(state, ...) "{{{3
 endfun
 
 fun! VikiDefineMarkup(state) "{{{3
-    if b:vikiNameTypes =~# "s" && b:vikiSimpleNameRx != ""
+    if b:vikiNameTypes =~? "s" && b:vikiSimpleNameRx != ""
         exe "syn match vikiLink /" . b:vikiSimpleNameRx . "/"
     endif
     if b:vikiNameTypes =~# "e" && b:vikiExtendedNameRx != ""
@@ -331,7 +341,7 @@ fun! VikiDefineHighlighting(state) "{{{3
                     \ ctermbg=LightBlue guifg=LightBlue
     endif
     
-    if b:vikiNameTypes =~# "s"
+    if b:vikiNameTypes =~? "s"
         VikiHiLink vikiLink vikiHyperLink
     endif
     if b:vikiNameTypes =~# "e"
@@ -891,7 +901,6 @@ ________________________________________________________________________________
 
 * To Do
 
-- improve use of g:vikiNameTypes
 - don't know how to deal with viki names spanning several lines
 - Recheck the key binding of c-cr
 - Different highlighting for existing and non-existing wiki pages
@@ -899,6 +908,10 @@ ________________________________________________________________________________
 
 
 * Change Log
+1.4
+- fixed problem with table highlighting that could cause vim to hang
+- it is now possible to selectivly disable simple or quoted viki names
+- indent plugin
 
 1.3.1
 - fixed bug when VikiBack was called without a definitiv back-reference

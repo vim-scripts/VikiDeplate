@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 11-Aug-2004.
-" @Revision: 0.355
+" @Last Change: 19-Aug-2004.
+" @Revision: 0.378
 
 if version < 600
   syntax clear
@@ -33,7 +33,7 @@ syn region vikiContinousBold start=/\(^\|\W\zs\)\*\*[^ 	*]/ end=/\*\*\|\n\{2,}/ 
 syn match vikiItalic /\(^\|\W\zs\)\/\(\\\/\|\w\)\{-1,}\//hs=s+1,he=e-1
 syn region vikiContinousItalic start=/\(^\|\W\zs\)\/\/[^ 	/]/hs=s+2 end=/\/\/\|\n\{2,}/he=e-2 skip=/\\\n/
 
-syn match vikiUnderline /\(^\|\W\zs\)_\(\\_\|\w\)\{-1,}_/
+syn match vikiUnderline /\(^\|\W\zs\)_\(\\_\|[^_\s]\)\{-1,}_/
 syn region vikiContinousUnderline start=/\(^\|\W\zs\)__[^ 	_]/ end=/__\|\n\{2,}/ skip=/\\\n/
 
 syn match vikiTypewriter /\(^\|\W\zs\)=\(\\=\|\w\)\{-1,}=/
@@ -48,17 +48,12 @@ syn region vikiString start=+^\s\+"\|"+ end=+"[.?!]\?\s\+$\|"+ contains=@vikiTex
 let b:vikiHeadingStart = '*'
 exe 'syn region vikiHeading start=/\V\^'. escape(b:vikiHeadingStart, '\') .'\+\s\+/ end=/\n/ contains=@vikiTextstyles'
 
-syn match vikiList /^\s\+\([-•+*#]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\ze\s/
+syn match vikiList /^\s\+\([-+*#?]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\ze\s/
 syn match vikiDescription /^\s\+.\{-1,}\s::\ze\s/
 
 syn match vikiTableRowSep /||\?/ contained containedin=vikiTableRow,vikiTableHead
-syn match vikiTableHead /^||[ ]\(.\{-}\(\\\n\|[ ]\)\)\+||$/ contains=ALL transparent
-" syn match vikiTableRow  /^|\s\(.\|\\\n\)\+\s|$/ contains=ALL transparent
-syn match vikiTableRow  /^|[ ]\(.\{-}\(\\\n\|[ ]\)\)\+|$/ contains=ALL transparent
-
-" syn match vikiLayoutMarker /[/|%_^]/ containedin=vikiLayout contained
-" syn match vikiLayout /|\S.\{-}\S|/
-            " \ contains=vikiLayoutMarker,@vikiTextstyles,vikiEscape,vikiEscapedChar,vikiMacro
+syn region vikiTableHead start=/^\s*|| / skip=/\\\n/ end=/ ||\s*$/ contains=ALLBUT,vikiTableRow,vikiTableHead transparent keepend
+syn region vikiTableRow  start=/^\s*| / skip=/\\\n/ end=/ |\s*$/ contains=ALLBUT,vikiTableRow,vikiTableHead transparent keepend
 
 syn region vikiMacro matchgroup=vikiMacroDelim start=/{[^:{}]\+:\?/ end=/}/ transparent
 
@@ -113,14 +108,10 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   HiLink  vikiString String
   hi vikiBold term=bold cterm=bold gui=bold
   HiLink vikiContinousBold vikiBold
-  " hi vikiItalic term=italic cterm=italic gui=italic
-  " HiLink vikiContinousItalic vikiItalic
   hi vikiUnderline term=underline cterm=underline gui=underline
   HiLink vikiContinousUnderline vikiUnderline
   exe "hi vikiTypewriter term=underline ctermfg=". s:cm1 ."Grey guifg=". s:cm1 ."Grey". s:twfont
   HiLink vikiContinousTypewriter vikiTypewriter
-  " hi vikiLayout term=standout cterm=standout gui=standout
-  " HiLink vikiLayoutMarker PreProc
   HiLink vikiMacroHead Statement
   HiLink vikiMacroDelim Identifier
   HiLink vikiCommand Statement

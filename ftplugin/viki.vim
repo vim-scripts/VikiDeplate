@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 17-Mai-2004.
-" @Revision: 13
+" @Last Change: 19-Aug-2004.
+" @Revision: 14
 
 if exists("b:did_ftplugin")
   finish

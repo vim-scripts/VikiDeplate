@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     25-Apr-2004.
-" @Last Change: 20-Mai-2004.
-" @Revision:    0.28
+" @Last Change: 19-Aug-2004.
+" @Revision:    0.29
 " 
 " Description:
 " Use deplate as the "compiler" for viki files.
