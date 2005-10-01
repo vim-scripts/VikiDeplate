@@ -2,8 +2,12 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 26-Jän-2005.
-" @Revision: 34
+" @Last Change: 01-Okt-2005.
+" @Revision: 89
+
+if !g:vikiEnabled
+    finish
+endif
 
 if exists("b:did_ftplugin")
   finish
@@ -26,30 +30,44 @@ exe "setlocal comments=:". b:vikiCommentStart
 setlocal foldmethod=expr
 setlocal foldexpr=VikiFoldLevel(v:lnum)
 setlocal expandtab
+setlocal iskeyword+=#
+
+let &include='\(^\s*#INC.\{-}\(\sfile=\|:\)\)'
+" let &include='\(^\s*#INC.\{-}\(\sfile=\|:\)\|\[\[\)'
+" set includeexpr=substitute(v:fname,'\].*$','','')
+
+let &define='^\s*\(#Def.\{-}id=\|#\(Fn\|Footnote\).\{-}\(:\|id=\)\|#VAR.\{-}\s\)'
 
 fun! VikiFoldLevel(lnum)
-    " let head = matchend(getline(a:lnum), '\V\^'. escape(b:vikiHeadingStart, '\') .'\ze\s\+')
-    let head = matchend(getline(a:lnum), '\V\^'. b:vikiHeadingStart .'\+\ze\s\+')
-    if head > 0
-        if b:vikiInverseFold
-            if b:vikiMaxFoldLevel > head
-                return ">". (b:vikiMaxFoldLevel - head)
+    if stridx(g:vikiFolds, 'h') >= 0
+        let head = <SID>MatchHead(a:lnum)
+        if head > 0
+            if b:vikiInverseFold
+                if b:vikiMaxFoldLevel > head
+                    return ">". (b:vikiMaxFoldLevel - head)
+                else
+                    return ">0"
+                end
             else
-                return ">0"
-            end
-        else
-            return ">". head
+                return ">". head
+            endif
         endif
-    else
-        " return foldlevel(a:lnum - 1)
         return "="
     endif
+    return 0
 endfun
 
-if !hasmapto(":VikiFind")
-    nnoremap <buffer> <c-tab>   :VikiFindNext<cr>
-    nnoremap <buffer> <c-s-tab> :VikiFindPrev<cr>
-endif
+fun! <SID>MatchHead(lnum)
+    " let head = matchend(getline(a:lnum), '\V\^'. escape(b:vikiHeadingStart, '\') .'\ze\s\+')
+    return matchend(getline(a:lnum), '\V\^'. b:vikiHeadingStart .'\+\ze\s\+')
+endf
+
+" if !hasmapto(":VikiFind")
+"     nnoremap <buffer> <c-tab>   :VikiFindNext<cr>
+"     nnoremap <buffer> <LocalLeader>vn :VikiFindNext<cr>
+"     nnoremap <buffer> <c-s-tab> :VikiFindPrev<cr>
+"     nnoremap <buffer> <LocalLeader>vN :VikiFindPrev<cr>
+" endif
 
 " compiler deplate
 

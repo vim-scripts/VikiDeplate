@@ -5,5 +5,6 @@
 ./ftplugin/viki.vim
 ./indent/viki.vim
 ./plugin/viki.vim
+./plugin/vikiAnyWord.vim
 ./plugin/vikiLatex.vim
 ./syntax/viki.vim

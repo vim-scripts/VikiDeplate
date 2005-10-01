@@ -3,13 +3,20 @@
 " @Website:     http://members.a1.net/t.link/
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     16-Jän-2004.
-" @Last Change: 05-Feb-2005.
-" @Revision: 0.189
+" @Last Change: 01-Okt-2005.
+" @Revision: 0.216
+
+if !g:vikiEnabled
+    finish
+endif
 
 if exists("b:did_indent") || exists("g:vikiNoIndent")
     finish
 endif
 let b:did_indent = 1
+
+" Possible values: 'sw', '::'
+if !exists("g:vikiIndentDesc") | let g:vikiIndentDesc = 'sw' | endif "{{{2
 
 setlocal indentexpr=VikiGetIndent()
 setlocal indentkeys&
@@ -35,12 +42,18 @@ fun! VikiGetIndent()
     
     let cnum  = v:lnum
     let cind  = indent(cnum)
+    let cline = getline(cnum)
     
     " Do not change indentation in regions
     if VikiIsInRegion(cnum)
         return cind
     endif
     
+    let cHeading = matchend(cline, '^\*\+\s\+')
+    if cHeading >= 0
+        return 0
+    endif
+        
     let pnum   = v:lnum - 1
     let pind   = indent(pnum)
     
@@ -49,21 +62,16 @@ fun! VikiGetIndent()
     
     if plCont >= 0
         let plHeading = matchend(pline, '^\*\+\s\+')
-        if plHeading >= 0
-            " echo "DBG continuation plHeading=". plHeading
-            return plHeading
-        else
-            " echo "DBG continuation pind=". pind
+        " if plHeading >= 0
+        "     " echo "DBG continuation plHeading=". plHeading
+        "     return plHeading
+        " else
+        "     " echo "DBG continuation pind=". pind
             return pind
-        endif
+        " endif
     end
     
     if cind > 0
-        let listRx = '^\s\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\s'
-        let descRx = '^\s\+.\{-1,}\s::\s'
-        
-        let cline = getline(cnum) " current line
-        
         " Do not change indentation of:
         "   - commented lines
         "   - headings
@@ -72,17 +80,26 @@ fun! VikiGetIndent()
             return ind
         endif
 
-
+        let markRx = '^\s\+\([#?!+]\)\1\{2,2}\s\+'
+        let listRx = '^\s\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\s\+'
+        let descRx = '^\s\+.\{-1,}\s::\s\+'
+        
+        let clMark = matchend(cline, markRx)
         let clList = matchend(cline, listRx)
         let clDesc = matchend(cline, descRx)
-        let cln    = clList >= 0 ? clList : clDesc
+        " let cln    = clList >= 0 ? clList : clDesc
 
-        if clList >= 0 || clDesc >= 0
+        if clList >= 0 || clDesc >= 0 || clMark >= 0
             let spaceEnd = matchend(cline, '^\s\+')
             let rv = (spaceEnd / &sw) * &sw
             " echom "DBG clList=". clList ." clDesc=". clDesc
             return rv
         else
+            let plMark = matchend(pline, markRx)
+            if plMark >= 0
+                return plMark
+            endif
+            
             let plList = matchend(pline, listRx)
             " echom "DBG plList=". plList ." plDesc=". plDesc
             if plList >= 0
@@ -93,7 +110,11 @@ fun! VikiGetIndent()
             let plDesc = matchend(pline, descRx)
             if plDesc >= 0
                 " echom "DBG plDesc ". pind + (&sw / 2)
-                return pind + (&sw / 2)
+                if plDesc >= 0 && g:vikiIndentDesc == '::'
+                    return plDesc
+                else
+                    return pind + (&sw / 2)
+                endif
             endif
 
             if cind < ind

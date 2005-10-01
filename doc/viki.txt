@@ -834,6 +834,14 @@ Etc:
     b:vikiMaxFoldLevel. I.e., if you set |foldlevel| to 1, you will see only 
     the text at level b:vikiMaxFoldLevel.
 
+- b:vikiNoSimpleNames                               *b:vikiNoSimpleNames*
+    Default: 0
+    If non-nil, simple viki names are disabled.
+
+- b:vikiDisableType                                 *b:vikiDisableType*
+    Disable certain viki name types (see |vikiNameTypes|).
+    E.g., in order to disable CamelCase names only, set this variable to 'c'.
+
 
 ================================================================================
                                                     *viki-highlight*

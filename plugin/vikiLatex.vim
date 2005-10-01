@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     28-Jän-2004.
-" @Last Change: 22-Jän-2005.
-" @Revision:    0.146
+" @Last Change: 01-Jun-2005.
+" @Revision:    0.148
 
 if &cp || exists("s:loaded_vikiLatex")
     finish
@@ -39,6 +39,7 @@ fun! VikiSetupBufferLaTeX(state, ...)
 endfun
 
 fun! VikiLatexCheckFilename(filename, ...)
+    echom "DBG: ". a:filename
     if a:filename != ""
         """ search in the current directory
         let i = 1
@@ -109,7 +110,7 @@ fun! VikiCompleteSimpleNameDefLaTeX(def)
     endif
     
     if dest == ""
-        throw "Viki LaTeX: can't find: ". cmd
+        throw "Viki LaTeX: can't find: ". cmd ." ". a:def
     else
         return VikiMakeDef(cmd, dest, anchor, part)
     endif
