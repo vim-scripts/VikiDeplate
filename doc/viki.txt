@@ -253,12 +253,11 @@ A viki name is either:
 
                 Couldn't SCI::ThisIdeaOfMine be combined with COMP::ThisIdeaOfMine?
 <
-            NOTE: An "inter wiki" is defined by setting a variable with the 
-            prefix "g:vikiInter". Example:
+            NOTE: You can define intervikis with the VikiDefine command: >
 
-                let g:vikiInterOTHERVIKI = "$HOME/bla"
+                VikiDefine OTHERVIKI /home/t/Wiki .vik
 
-            Then OTHERVIKI::VikiName points to the file "$HOME/bla/VikiName".
+<           Then OTHERVIKI::VikiName points to the file "/home/t/Wiki/VikiName.vik".
 
             NOTE: Set the string variable g:vikiInter{NAME}_suffix (see 
             |curly-braces-names|) in order to override the settings of 
@@ -358,6 +357,7 @@ Headings~
 
                                                     *viki-lists*
 Lists: (indented)~
+
     - Item
         * Item
             + Item
@@ -370,13 +370,37 @@ Lists: (indented)~
                 @ Item A
                 @ Item B
 
-    NOTE: "@" (unordered lists) and "#" (ordered lists) are the preferred 
-    markers.
+NOTE: "@" (unordered lists) and "#" (ordered lists) are the preferred markers.
 
 
                                                     *viki-descriptions*
 Descriptions: (indented)~
+
     Item :: Description
+
+
+                                                    *viki-tasks*
+Tasks: (indented)~
+emacs-planer compatible mode: >
+
+    #A1 _           Important task
+    #A2 x           Less important task (done)
+    #A2 90%         Less important task (mostly completed)
+    #B2 2005-10-30  Less important task with deadline
+    #B2 x2005-10-25 Less important task (completed)
+
+You can also switch category and priority: >
+
+    #1A _           Important task
+    #2A x           Less important task (done)
+
+If you want to sort by date, you have to use this form: >
+
+    #T: 2005-10-30  2A: Important task
+    #T: 2005-11-11  1A: Most important task
+    #T: x2005-10-30 3A: Less important task (done)
+
+NOTE: deplate doesn't currently support task lists.
 
 
                                                     *viki-tables*
@@ -386,8 +410,8 @@ Tables~
 #CAPTION: This Table
 #label
 
-    NOTE: Rows can span more than one line by putting a backslash ('\') at 
-    the end of the line.
+NOTE: Rows can span more than one line by putting a backslash ('\') at the end 
+of the line.
 
 
                                                     *viki-symbols*
@@ -404,7 +428,7 @@ Markers~
 Strings~
 "Text in \"quotes\""
 
-    NOTE: See also |g:vikiMarkupEndsWithNewline|.
+NOTE: See also |g:vikiMarkupEndsWithNewline|.
 
 
                                                     *viki-textstyles*
@@ -538,6 +562,8 @@ Default Key Binding~
 a wiki syntax group -- if the second argument is 1 it tries to interpret the 
 text under the cursor as a wiki name anyway.
 
+<LocalLeader>ve ... |:VikiEdit| edit a viki page
+
 <LocalLeader><c-r> or <LocalLeader>vs ... Open in a new window
 <LocalLeader>vv ... Open in a new window but split vertically
     - see also |vikiSplit|
@@ -557,8 +583,8 @@ If |g:vikiMapMouse| is true then these mappings are active, too:
 
 Additional Key Binding In Full Viki Mode
 
-<c-tab>    ... |:VikiFindNext|
-<s-c-tab>  ... |:VikiFindPrev|
+<c-tab>, <LocalLeader>vn   ... |:VikiFindNext|
+<s-c-tab>, <LocalLeader>vN ... |:VikiFindPrev|
 
 
 ================================================================================
@@ -591,13 +617,18 @@ Commands~
   Mark selected text as a quoted simple viki name, i.e., enclose it in 
   [- and -].
 
-- VikiEdit NAME                                     *:VikiEdit*
-  Edit the wiki page called NAME. This is a convenient way to edit any wiki 
-  page from vim's command line. There are a few gotchas, though:
+- VikiEdit[!] NAME                                     *:VikiEdit*
+  Edit the wiki page called NAME. If the NAME is '*', the |viki-homepage| will 
+  be opened. This is a convenient way to edit any wiki page from vim's command 
+  line. If you call :VikiEdit! (with bang), the homepage will be opened first, 
+  so that the homepage's customizations (and not the current buffer's one) are 
+  in effect. There are a few gotchas:
 
   1. Viki doesn't define a default directory for wiki pages. Thus a wiki page 
   will be looked for in the directory of the current buffer -- whatever this 
-  is. You can circumvent this problem by using |interviki| names.
+  is -- and the customizations of this buffer are in effect. You can 
+  circumvent this problem by using |interviki| names or define a 
+  |viki-homepage| and call :VikiEdit! with a bang.
 
   2. Viki relies on some buffer local variables to be set. As customizability 
   is one viki's main design goal (although, one might want to discuss whether 
@@ -607,8 +638,14 @@ Commands~
   wiki page of this type. E.g.: If the current buffer contains a LaTeX file, 
   |vikiFamily| is most likely set to "LaTeX" (see |viki-latex|). For the LaTeX 
   family, e.g., CamelCase and interwiki names are disabled. Consequently, you 
-  can't do, e.g., ":VikiEdit IDEAS::WikiPage".
+  can't do, e.g., ":VikiEdit IDEAS::WikiPage". Again, you can circumvent this 
+  problem by defining a |viki-homepage| and call :VikiEdit! with a bang.
 
+- VikiHome                                          *:VikiHome*
+  Open the |viki-homepage|.
+
+- VikiDefine NAME BASE ?SUFFIX                      *:VikiDefine*
+    Define an interviki.
 
 ================================================================================
                                                     *viki-functions*
@@ -674,6 +711,12 @@ Functions~
 ================================================================================
                                                     *viki-variables*
 Variables~
+
+Homepage:                                           *viki-homepage*
+                                                    *g:vikiHomePage*
+- g:vikiHomePage:
+    An absolute filename that is the general viki homepage (see also 
+    |:VikiEdit| and |:VikiHome|).
 
 Simple Viki Names [2]:                              *viki-vars-simple-names*
                                                     *g:vikiLowerCharacters* 
@@ -841,6 +884,14 @@ Etc:
 - b:vikiDisableType                                 *b:vikiDisableType*
     Disable certain viki name types (see |vikiNameTypes|).
     E.g., in order to disable CamelCase names only, set this variable to 'c'.
+
+- g:vikiHide                                        *g:vikiHide*
+    Default: ''
+    If a dirty buffers gets hidden, vim usually complains. This can be 
+    tiresome -- depending on your editing habits. When this variable is set to 
+    "hide", vim won't complain. If you set it to "update", a viki buffer will 
+    be automatically updated before editing a different file.  If you leave 
+    this empty (""), the default behaviour is in effect. See also |hidden|.
 
 
 ================================================================================

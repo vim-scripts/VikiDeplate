@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 28-Sep-2005.
-" @Revision: 0.531
+" @Last Change: 31-Okt-2005.
+" @Revision: 0.589
 
 if !g:vikiEnabled
     finish
@@ -34,7 +34,7 @@ syntax sync minlines=2
 syn match vikiEscape /\\/ contained containedin=vikiEscapedChar
 syn match vikiEscapedChar /\\\_./ contains=vikiEscape,vikiChar
 
-exe 'syn match vikiAnchor /^\('. escape(b:vikiCommentStart, '\/.*^$~[]') .'\)\?\[[:blank:]]\*#'. b:vikiAnchorNameRx .'/'
+exe 'syn match vikiAnchor /^\('. escape(b:vikiCommentStart, '\/.*^$~[]') .'\)\?[[:blank:]]*#'. b:vikiAnchorNameRx .'/'
 " syn match vikiMarkers /\(\([#?!+]\)\2\{2,2}\)/
 syn match vikiMarkers /\V\(###\|???\|!!!\|+++\)/
 " syn match vikiSymbols /\(--\|!=\|==\+\|\~\~\+\|<-\+>\|<=\+>\|<\~\+>\|<-\+\|-\+>\|<=\+\|=\+>\|<\~\+\|\~\+>\|\.\.\.\)/
@@ -64,10 +64,34 @@ exe 'syn match vikiComment /\V\^\[[:blank:]]\*'. escape(b:vikiCommentStart, '\/'
 syn region vikiString start=+^"\|\s"+ end=+"+ contains=@vikiText
 
 let b:vikiHeadingStart = '*'
-exe 'syn region vikiHeading start=/\V\^'. escape(b:vikiHeadingStart, '\/') .'\+\[[:blank:]]\+/ end=/\n/ contains=@vikiText'
+if g:vikiFancyHeadings
+    let hd=escape(b:vikiHeadingStart, '\/')
+    exe 'syn region vikiHeading1 start=/\V\^'. hd .'\[[:blank:]]\+/ end=/\n/ contains=@vikiText'
+    exe 'syn region vikiHeading2 start=/\V\^'. hd.hd .'\[[:blank:]]\+/ end=/\n/ contains=@vikiText'
+    exe 'syn region vikiHeading3 start=/\V\^'. hd.hd.hd .'\[[:blank:]]\+/ end=/\n/ contains=@vikiText'
+    exe 'syn region vikiHeading4 start=/\V\^'. hd.hd.hd.hd .'\[[:blank:]]\+/ end=/\n/ contains=@vikiText'
+    exe 'syn region vikiHeading5 start=/\V\^'. hd.hd.hd.hd.hd .'\[[:blank:]]\+/ end=/\n/ contains=@vikiText'
+    exe 'syn region vikiHeading6 start=/\V\^'. hd.hd.hd.hd.hd.hd .'\[[:blank:]]\+/ end=/\n/ contains=@vikiText'
+else
+    exe 'syn region vikiHeading start=/\V\^'. escape(b:vikiHeadingStart, '\/') .'\+\[[:blank:]]\+/ end=/\n/ contains=@vikiText'
+endif
 
 syn match vikiList /^[[:blank:]]\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\ze[[:blank:]]/
 syn match vikiDescription /^[[:blank:]]\+\(\\\n\|.\)\{-1,}[[:blank:]]::\ze[[:blank:]]/ contains=@vikiHyperLinks,vikiEscapedChar,vikiComment
+
+syn match vikiPriorityListTodoA /^[[:blank:]]\+\zs#\(T: \+.\{-}A.\{-}:\|\d*A\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
+syn match vikiPriorityListTodoB /^[[:blank:]]\+\zs#\(T: \+.\{-}B.\{-}:\|\d*B\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
+syn match vikiPriorityListTodoC /^[[:blank:]]\+\zs#\(T: \+.\{-}C.\{-}:\|\d*C\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
+syn match vikiPriorityListTodoD /^[[:blank:]]\+\zs#\(T: \+.\{-}D.\{-}:\|\d*D\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
+syn match vikiPriorityListTodoE /^[[:blank:]]\+\zs#\(T: \+.\{-}E.\{-}:\|\d*E\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
+syn match vikiPriorityListTodoF /^[[:blank:]]\+\zs#\(T: \+.\{-}F.\{-}:\|\d*F\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
+
+syn match vikiPriorityListDoneA /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}A.\{-}:\|\(T: \+\)\?\d*A\d* \+x[0-9%-]*\):\? .*/
+syn match vikiPriorityListDoneB /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}B.\{-}:\|\(T: \+\)\?\d*B\d* \+x[0-9%-]*\):\? .*/
+syn match vikiPriorityListDoneC /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}C.\{-}:\|\(T: \+\)\?\d*C\d* \+x[0-9%-]*\):\? .*/
+syn match vikiPriorityListDoneD /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}D.\{-}:\|\(T: \+\)\?\d*D\d* \+x[0-9%-]*\):\? .*/
+syn match vikiPriorityListDoneE /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}E.\{-}:\|\(T: \+\)\?\d*E\d* \+x[0-9%-]*\):\? .*/
+syn match vikiPriorityListDoneF /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}F.\{-}:\|\(T: \+\)\?\d*F\d* \+x[0-9%-]*\):\? .*/
 
 syn match vikiTableRowSep /||\?/ contained containedin=vikiTableRow,vikiTableHead
 syn region vikiTableHead start=/^[[:blank:]]*|| / skip=/\\\n/ end=/\(^\| \)||[[:blank:]]*$/ contains=ALLBUT,vikiTableRow,vikiTableHead transparent keepend
@@ -75,7 +99,7 @@ syn region vikiTableRow  start=/^[[:blank:]]*| / skip=/\\\n/ end=/\(^\| \)|[[:bl
 
 syn region vikiMacro matchgroup=vikiMacroDelim start=/{[^:{}]\+:\?/ end=/}/ transparent
 
-syn match vikiCommand /^\C[[:blank:]]*#\([A-Z]\+\)\>\(\\\n\|.\)*/
+syn match vikiCommand /^\C[[:blank:]]*#\([A-Z]\{2,}\)\>\(\\\n\|.\)*/
 syn region vikiRegion matchgroup=vikiMacroDelim 
             \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\).\{-}<<\z(.\+\)$/ end=/^[[:blank:]]*\z1[[:blank:]]*$/ contains=@vikiText
 syn region vikiRegionWEnd matchgroup=vikiMacroDelim 
@@ -117,9 +141,51 @@ if version >= 508 || !exists("did_viki_syntax_inits")
  
   HiLink vikiEscapedChars Normal
   exe "hi vikiEscape ctermfg=". s:cm2 ."grey guifg=". s:cm2 ."grey"
-  exe "hi vikiHeading term=bold,underline cterm=bold gui=bold ctermfg=". s:cm1 ."Magenta guifg=".s:cm1."Magenta". s:hdfont
   exe "hi vikiList term=bold cterm=bold gui=bold ctermfg=". s:cm1 ."Cyan guifg=". s:cm1 ."Cyan"
   HiLink vikiDescription vikiList
+  if g:vikiFancyHeadings
+      if &background == "light"
+          let hdhl="term=bold,underline cterm=bold gui=bold ctermfg=". s:cm1 ."Magenta guifg=".s:cm1."Magenta". s:hdfont
+          exe "hi vikiHeading1 ". hdhl ." guibg=#ffff00"
+          exe "hi vikiHeading2 ". hdhl ." guibg=#ffff30"
+          exe "hi vikiHeading3 ". hdhl ." guibg=#ffff60"
+          exe "hi vikiHeading4 ". hdhl ." guibg=#ffff90"
+          exe "hi vikiHeading5 ". hdhl ." guibg=#ffffb0"
+          exe "hi vikiHeading6 ". hdhl ." guibg=#ffffe0"
+      else
+          let hdhl="term=bold,underline cterm=bold gui=bold ctermfg=DarkMagenta guifg=DarkMagenta". s:hdfont
+          exe "hi vikiHeading1 ". hdhl ." guibg=#ffff00"
+          exe "hi vikiHeading2 ". hdhl ." guibg=#aadd00"
+          exe "hi vikiHeading3 ". hdhl ." guibg=#88aa00"
+          exe "hi vikiHeading4 ". hdhl ." guibg=#558800"
+          exe "hi vikiHeading5 ". hdhl ." guibg=#225500"
+          exe "hi vikiHeading6 ". hdhl ." guibg=#002200"
+      endif
+  else
+      exe "hi vikiHeading term=bold,underline cterm=bold gui=bold ctermfg=". s:cm1 ."Magenta guifg=".s:cm1."Magenta". s:hdfont
+  endif
+  
+  let vikiPriorityListTodo = ' term=bold,underline gui=bold guifg=Black '
+  exec 'hi vikiPriorityListTodoA'. vikiPriorityListTodo  .'guibg=Red'
+  exec 'hi vikiPriorityListTodoB'. vikiPriorityListTodo  .'guibg=Orange'
+  exec 'hi vikiPriorityListTodoC'. vikiPriorityListTodo  .'guibg=Yellow'
+  exec 'hi vikiPriorityListTodoD'. vikiPriorityListTodo  .'guibg=LightMagenta'
+  exec 'hi vikiPriorityListTodoE'. vikiPriorityListTodo  .'guibg=LightYellow'
+  exec 'hi vikiPriorityListTodoF'. vikiPriorityListTodo  .'guibg=LightGreen'
+ 
+  " let vikiPriorityListDone = ' guifg='. s:cm1 .'Gray '
+  " exec 'hi vikiPriorityListDoneA'. vikiPriorityListDone
+  " exec 'hi vikiPriorityListDoneB'. vikiPriorityListDone
+  " exec 'hi vikiPriorityListDoneC'. vikiPriorityListDone
+  " exec 'hi vikiPriorityListDoneD'. vikiPriorityListDone
+  " exec 'hi vikiPriorityListDoneE'. vikiPriorityListDone
+  " exec 'hi vikiPriorityListDoneF'. vikiPriorityListDone
+  HiLink vikiPriorityListDoneA Comment
+  HiLink vikiPriorityListDoneB Comment
+  HiLink vikiPriorityListDoneC Comment
+  HiLink vikiPriorityListDoneD Comment
+  HiLink vikiPriorityListDoneE Comment
+  HiLink vikiPriorityListDoneF Comment
   
   exe "hi vikiTableRowSep term=bold cterm=bold gui=bold ctermbg=". s:cm2 ."Grey guibg=". s:cm2 ."Grey"
   
@@ -127,7 +193,7 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   hi vikiMarkers term=bold cterm=bold gui=bold ctermfg=DarkRed guifg=DarkRed ctermbg=yellow guibg=yellow
   hi vikiAnchor term=italic cterm=italic gui=italic ctermfg=grey guifg=grey
   HiLink vikiComment Comment
-  HiLink  vikiString String
+  HiLink vikiString String
   
   if b:vikiTextstylesVer == 1
       hi vikiContinousBold term=bold cterm=bold gui=bold

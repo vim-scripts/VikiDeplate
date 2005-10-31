@@ -3,8 +3,8 @@
 " @Website:     http://members.a1.net/t.link/
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     16-Jän-2004.
-" @Last Change: 01-Okt-2005.
-" @Revision: 0.216
+" @Last Change: 29-Okt-2005.
+" @Revision: 0.222
 
 if !g:vikiEnabled
     finish
@@ -82,14 +82,16 @@ fun! VikiGetIndent()
 
         let markRx = '^\s\+\([#?!+]\)\1\{2,2}\s\+'
         let listRx = '^\s\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\s\+'
+        let priRx  = '^\s\+#[A-F]\d\? \+[x_] \+'
         let descRx = '^\s\+.\{-1,}\s::\s\+'
         
         let clMark = matchend(cline, markRx)
         let clList = matchend(cline, listRx)
+        let clPri  = matchend(cline, priRx)
         let clDesc = matchend(cline, descRx)
         " let cln    = clList >= 0 ? clList : clDesc
 
-        if clList >= 0 || clDesc >= 0 || clMark >= 0
+        if clList >= 0 || clDesc >= 0 || clMark >= 0 || clPri >= 0
             let spaceEnd = matchend(cline, '^\s\+')
             let rv = (spaceEnd / &sw) * &sw
             " echom "DBG clList=". clList ." clDesc=". clDesc
@@ -101,10 +103,15 @@ fun! VikiGetIndent()
             endif
             
             let plList = matchend(pline, listRx)
-            " echom "DBG plList=". plList ." plDesc=". plDesc
             if plList >= 0
                 " echom "DBG plList ". plList ." ". pline
                 return plList
+            endif
+
+            let plPri = matchend(pline, priRx)
+            " echom "DBG plPri=". plPri
+            if plPri >= 0
+                return plPri
             endif
 
             let plDesc = matchend(pline, descRx)
