@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 31-Okt-2005.
-" @Revision: 0.589
+" @Last Change: 19-Nov-2005.
+" @Revision: 0.590
 
 if !g:vikiEnabled
     finish
@@ -17,7 +17,7 @@ endif
 
 " This command sets up buffer variables and adds some basic highlighting.
 let b:vikiEnabled = 0
-call VikiDispatchOnFamily("VikiMinorMode", -1)
+call VikiDispatchOnFamily("VikiMinorMode", -2)
 let b:vikiEnabled = 2
 
 " On slow machine the extended syntax highlighting can cause some major 

@@ -99,6 +99,9 @@ Then run >
 (Windows) >
     :helptags $VIM/vimfiles/doc
 
+Viki doesn't set the viki filetype for you. How you set the filetype is up to 
+you to decide. Basically, there are two possibilities: based on a suffix or 
+based on the location. See below for examples.
 
 
 Customization:                                      *viki-customization*
@@ -149,8 +152,7 @@ Later on, you probably want to define some intervikis. A |interviki| is a
 shortcut to a different viki directory/namespace, so that you have to care 
 less about page names: >
 
-    let g:vikiInterSCI        = $HOME ."/Projects/Sci/Ideas"
-    let g:vikiInterSCI_suffix = ".txt"
+    call VikiDefine('SCI', $HOME."/Projects/Sci/Ideas", ".txt")
 
 This could then be accessed as SCI::ThisIdea, which would refer to the file 
 "~/Projects/Sci/Ideas/ThisIdea.txt".
@@ -389,18 +391,14 @@ emacs-planer compatible mode: >
     #B2 2005-10-30  Less important task with deadline
     #B2 x2005-10-25 Less important task (completed)
 
-You can also switch category and priority: >
+You can switch category, priority, and date: >
 
     #1A _           Important task
     #2A x           Less important task (done)
 
-If you want to sort by date, you have to use this form: >
-
-    #T: 2005-10-30  2A: Important task
-    #T: 2005-11-11  1A: Most important task
-    #T: x2005-10-30 3A: Less important task (done)
-
-NOTE: deplate doesn't currently support task lists.
+    #2005-10-30  2A Important task
+    #2005-11-11  1A Most important task
+    #x2005-10-30 3A Less important task (done)
 
 
                                                     *viki-tables*
@@ -876,6 +874,13 @@ Etc:
     b:vikiMaxFoldLevel - 2 to level 3 ...  and a top heading to level 
     b:vikiMaxFoldLevel. I.e., if you set |foldlevel| to 1, you will see only 
     the text at level b:vikiMaxFoldLevel.
+
+- g:vikiFolds                                       *g:vikiFolds*
+    Default: hl
+    Define which elements should be folded:
+        h :: Heading
+        H :: Headings (but inverse folding)
+        l :: Lists
 
 - b:vikiNoSimpleNames                               *b:vikiNoSimpleNames*
     Default: 0
