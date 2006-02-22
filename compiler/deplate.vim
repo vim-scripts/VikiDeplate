@@ -2,33 +2,40 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     25-Apr-2004.
-" @Last Change: 07-Nov-2004.
-" @Revision:    0.31
+" @Last Change: 20-Dez-2005.
+" @Revision:    0.41
 " 
 " Description:
 " Use deplate as the "compiler" for viki files.
-" 
 
-let g:current_compiler="deplate"
+if exists("current_compiler")
+  finish
+endif
+let current_compiler = "deplate"
+" let g:current_compiler="deplate"
+
+if exists(":CompilerSet") != 2
+    command! -nargs=* CompilerSet setlocal <args>
+endif
 
 let s:cpo_save = &cpo
 set cpo&vim
 
-fun! DeplateSetCompiler(options)
+fun! DeplateCompilerSet(options)
     if exists("b:deplatePrg")
-        exec "setlocal makeprg=".escape(b:deplatePrg ." ". a:options, " ")."\\ $*\\ %"
+        exec "CompilerSet makeprg=".escape(b:deplatePrg ." ". a:options, " ")."\\ $*\\ %"
     elseif exists("g:deplatePrg")
-        exec "setlocal makeprg=".escape(g:deplatePrg ." ". a:options, " ")."\\ $*\\ %"
+        exec "CompilerSet makeprg=".escape(g:deplatePrg ." ". a:options, " ")."\\ $*\\ %"
     else
-        exec "setlocal makeprg=deplate ".escape(a:options, " ")."\\ $*\\ %"
-        " setlocal makeprg=deplate\ $*\ %
+        exec "CompilerSet makeprg=deplate ".escape(a:options, " ")."\\ $*\\ %"
+        " CompilerSet makeprg=deplate\ $*\ %
     endif
-endfun
-command! -nargs=* DeplateSetCompiler call DeplateSetCompiler(<q-args>)
+endf
+command! -nargs=* DeplateCompilerSet call DeplateCompilerSet(<q-args>)
 
-DeplateSetCompiler
+DeplateCompilerSet
 
-setlocal errorformat=%f:%l:%m,%f:%l-%*\\d:%m
+CompilerSet errorformat=%f:%l:%m,%f:%l-%*\\d:%m
 
 let &cpo = s:cpo_save
 unlet s:cpo_save

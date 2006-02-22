@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (mailto:samul@web.de?subject=vim-vikiAnyWord)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     04-Apr-2005.
-" @Last Change: 04-Apr-2005.
-" @Revision:    0.2
+" @Last Change: 16-Feb-2006.
+" @Revision:    0.14
 
 if &cp || exists("loaded_vikianyword")
     finish
@@ -12,14 +12,15 @@ let loaded_vikianyword = 1
 
 """" Any Word {{{1
 fun! VikiMinorModeAnyWord (state) "{{{3
-    let b:vikiFamily = "AnyWord"
+    let b:vikiFamily = 'AnyWord'
     call VikiMinorMode(a:state)
 endfun
 command! VikiMinorModeAnyWord call VikiMinorModeAnyWord(1)
 command! VikiMinorModeMaybeAnyWord call VikiMinorModeAnyWord(-1)
 
 fun! VikiSetupBufferAnyWord(state, ...) "{{{3
-    let dontSetup = a:0 > 0 ? a:1 : ""
+    echom "DBG VikiSetupBufferAnyWord"
+    let dontSetup = a:0 > 0 ? a:1 : ''
     call VikiSetupBuffer(a:state, dontSetup)
     if b:vikiNameTypes =~? "s" && !(dontSetup =~? "s")
         if b:vikiNameTypes =~# "S" && !(dontSetup =~# "S")
@@ -76,23 +77,21 @@ fun! VikiDefineMarkupAnyWord(state) "{{{3
 endfun
 
 fun! VikiDefineHighlightingAnyWord(state, ...) "{{{3
-    let dontSetup = a:0 > 0 ? a:1 : ""
+    let dontSetup = a:0 > 0 ? a:1 : ''
     call VikiDefineHighlighting(a:state)
-
     if version < 508
         command! -nargs=+ VikiHiLink hi link <args>
     else
         command! -nargs=+ VikiHiLink hi def link <args>
     endif
-    exec "VikiHiLink ". b:vikiInexistentHighlight ." Normal"
+    exec 'VikiHiLink '. b:vikiInexistentHighlight .' Normal'
     delcommand VikiHiLink
 endf
 
-fun! VikiFindAnyWord(flag) "{{{3
-    let rx = <SID>VikiRxFromCollection(b:vikiNamesOk)
-    if rx != ""
-        call search(rx, a:flag)
-    endif
+fun! VikiFindAnyWord(flag, ...) "{{{3
+    let rx = VikiRxFromCollection(b:vikiNamesOk)
+    let i  = a:0 >= 1 ? a:1 : 0
+    call VikiFind(a:flag, i, rx)
 endfun
 
 

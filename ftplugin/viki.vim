@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 18-Nov-2005.
-" @Revision: 103
+" @Last Change: 25-Jän-2006.
+" @Revision: 143
 
 if !g:vikiEnabled
     finish
@@ -52,40 +52,84 @@ let b:vikiHeadingMaxLevel = 0
 " compiler deplate
 
 
-if exists('*VikiFoldLevel')
-    finish
-endif
+" if exists('*VikiFoldLevel')
+"     finish
+" endif
 
 fun! VikiFoldLevel(lnum)
     let vikiFolds = exists('b:vikiFolds') ? b:vikiFolds : g:vikiFolds
     if stridx(vikiFolds, 'h') >= 0
         if vikiFolds =~? 'h'
-            let head = <SID>MatchHead(a:lnum)
-            if head > 0
-                if head > b:vikiHeadingMaxLevel
-                    let b:vikiHeadingMaxLevel = head
-                endif
-                if b:vikiInverseFold || vikiFolds =~# 'H'
-                    if b:vikiMaxFoldLevel > head
-                        return ">". (b:vikiMaxFoldLevel - head)
-                    else
-                        return ">0"
-                    end
-                else
-                    return ">". head
-                endif
+            let fl = <SID>ScanHeading(a:lnum, a:lnum, vikiFolds)
+            if fl != ''
+                return fl
             endif
         endif
-        if vikiFolds =~# 'l'
+        if vikiFolds =~# 'l' 
             let list = <SID>MatchList(a:lnum)
             if list > 0
-                return b:vikiHeadingMaxLevel + (list / &sw)
+                " return '>'. (b:vikiHeadingMaxLevel + (list / &sw))
+                return (b:vikiHeadingMaxLevel + (list / &sw))
+            elseif getline(a:lnum) !~ '^[[:blank:]]' && <SID>MatchList(a:lnum - 1) > 0
+                let fl = <SID>ScanHeading(a:lnum - 1, 1, vikiFolds)
+                if fl != ''
+                    if fl[0] == '>'
+                        let fl = strpart(fl, 1)
+                    endif
+                    return '<'. (fl + 1)
+                endif
             endif
         endif
-        return "="
+        if vikiFolds =~# 's'
+            if exists('b:vikiFoldDef')
+                exec b:vikiFoldDef
+                if vikiFoldLine == a:lnum
+                    return vikiFoldLevel
+                endif
+            endif
+            let i = 1
+            while i > a:lnum
+                let vfl = VikiFoldLevel(a:lnum - i)
+                if vfl[0] == '>'
+                    let b:vikiFoldDef = 'let vikiFoldLine='. a:lnum 
+                                \ .'|let vikiFoldLevel="'. vfl .'"'
+                    return vfl
+                elseif vfl == '='
+                    let i = i + 1
+                endif
+            endwh
+        endif
+        if b:vikiHeadingMaxLevel == 0
+            return 0
+        else
+            return "="
+        endif
     endif
     return 0
 endfun
+
+fun! <SID>ScanHeading(lnum, top, vikiFolds)
+    let lnum = a:lnum
+    while lnum >= a:top
+        let head = <SID>MatchHead(lnum)
+        if head > 0
+            if head > b:vikiHeadingMaxLevel
+                let b:vikiHeadingMaxLevel = head
+            endif
+            if b:vikiInverseFold || a:vikiFolds =~# 'H'
+                if b:vikiMaxFoldLevel > head
+                    return ">". (b:vikiMaxFoldLevel - head)
+                else
+                    return ">0"
+                end
+            else
+                return ">". head
+            endif
+        endif
+        let lnum = lnum - 1
+    endwh
+    return ''
+endf
 
 fun! <SID>MatchHead(lnum)
     " let head = matchend(getline(a:lnum), '\V\^'. escape(b:vikiHeadingStart, '\') .'\ze\s\+')

@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 19-Nov-2005.
-" @Revision: 0.590
+" @Last Change: 25-Jan-2006.
+" @Revision: 0.611
 
 if !g:vikiEnabled
     finish
@@ -17,7 +17,7 @@ endif
 
 " This command sets up buffer variables and adds some basic highlighting.
 let b:vikiEnabled = 0
-call VikiDispatchOnFamily("VikiMinorMode", -2)
+call VikiDispatchOnFamily('VikiMinorMode', '', 2)
 let b:vikiEnabled = 2
 
 " On slow machine the extended syntax highlighting can cause some major 
@@ -34,7 +34,8 @@ syntax sync minlines=2
 syn match vikiEscape /\\/ contained containedin=vikiEscapedChar
 syn match vikiEscapedChar /\\\_./ contains=vikiEscape,vikiChar
 
-exe 'syn match vikiAnchor /^\('. escape(b:vikiCommentStart, '\/.*^$~[]') .'\)\?[[:blank:]]*#'. b:vikiAnchorNameRx .'/'
+" exe 'syn match vikiAnchor /^\('. escape(b:vikiCommentStart, '\/.*^$~[]') .'\)\?[[:blank:]]*#'. b:vikiAnchorNameRx .'/'
+exe 'syn match vikiAnchor /^[[:blank:]]*%\?[[:blank:]]*#'. b:vikiAnchorNameRx .'/'
 " syn match vikiMarkers /\(\([#?!+]\)\2\{2,2}\)/
 syn match vikiMarkers /\V\(###\|???\|!!!\|+++\)/
 " syn match vikiSymbols /\(--\|!=\|==\+\|\~\~\+\|<-\+>\|<=\+>\|<\~\+>\|<-\+\|-\+>\|<=\+\|=\+>\|<\~\+\|\~\+>\|\.\.\.\)/
@@ -58,7 +59,8 @@ endif
 
 syn cluster vikiText contains=@vikiTextstyles,@vikiHyperLinks,vikiMarkers
 
-exe 'syn match vikiComment /\V\^\[[:blank:]]\*'. escape(b:vikiCommentStart, '\/') .'\.\*/ contains=@vikiText'
+" exe 'syn match vikiComment /\V\^\[[:blank:]]\*'. escape(b:vikiCommentStart, '\/') .'\.\*/ contains=@vikiText'
+syn match vikiComment /^[[:blank:]]*%.*$/ contains=@vikiText
 
 " syn region vikiString start=+^[[:blank:]]\+"\|"+ end=+"[.?!]\?[[:blank:]]\+$\|"+ contains=@vikiText
 syn region vikiString start=+^"\|\s"+ end=+"+ contains=@vikiText
@@ -218,7 +220,10 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   delcommand HiLink
 endif
 
-if g:vikiMarkInexistent && !exists("b:vikiCheckInexistent")
+" if g:vikiMarkInexistent && !exists("b:vikiCheckInexistent")
+if g:vikiMarkInexistent
     VikiMarkInexistent
 endif
+
+let b:current_syntax = 'viki'
 

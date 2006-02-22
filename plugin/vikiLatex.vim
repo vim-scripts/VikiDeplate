@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     28-Jän-2004.
-" @Last Change: 01-Jun-2005.
-" @Revision:    0.148
+" @Last Change: 01-Feb-2006.
+" @Revision:    0.162
 
 if &cp || exists("s:loaded_vikiLatex")
     finish
@@ -36,10 +36,9 @@ fun! VikiSetupBufferLaTeX(state, ...)
         let b:vikiSimpleNameDestIdx   = 0
         let b:vikiSimpleNameAnchorIdx = 0
     endif
-endfun
+endf
 
 fun! VikiLatexCheckFilename(filename, ...)
-    echom "DBG: ". a:filename
     if a:filename != ""
         """ search in the current directory
         let i = 1
@@ -112,17 +111,16 @@ fun! VikiCompleteSimpleNameDefLaTeX(def)
     if dest == ""
         throw "Viki LaTeX: can't find: ". cmd ." ". a:def
     else
-        return VikiMakeDef(cmd, dest, anchor, part)
+        return VikiMakeDef(cmd, dest, anchor, part, 'simple')
     endif
 endfun
 
-fun! VikiMinorModeLaTeX (state)
+fun! VikiMinorModeLaTeX(state)
     let b:vikiFamily = "LaTeX"
     call VikiMinorMode(a:state)
-endfun
+endf
 
 command! VikiMinorModeLaTeX call VikiMinorModeLaTeX(1)
-command! VikiMinorModeMaybeLaTeX call VikiMinorModeLaTeX(-1)
 " au FileType tex let b:vikiFamily="LaTeX"
 
 " vim: ff=unix
