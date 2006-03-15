@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 25-Jän-2006.
-" @Revision: 143
+" @Last Change: 06-Mär-2006.
+" @Revision: 145
 
 if !g:vikiEnabled
     finish
@@ -41,6 +41,8 @@ let &include='\(^\s*#INC.\{-}\(\sfile=\|:\)\)'
 let &define='^\s*\(#Def.\{-}id=\|#\(Fn\|Footnote\).\{-}\(:\|id=\)\|#VAR.\{-}\s\)'
 
 let b:vikiHeadingMaxLevel = 0
+
+" if !exists('b:vikiHideBody') | let b:vikiHideBody = 0 | endif
 
 " if !hasmapto(":VikiFind")
 "     nnoremap <buffer> <c-tab>   :VikiFindNext<cr>
@@ -101,6 +103,8 @@ fun! VikiFoldLevel(lnum)
         endif
         if b:vikiHeadingMaxLevel == 0
             return 0
+        elseif vikiFolds =~# 'b'
+            return b:vikiHeadingMaxLevel + 1
         else
             return "="
         endif

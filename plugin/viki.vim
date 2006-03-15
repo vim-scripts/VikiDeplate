@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 22-Feb-2006.
-" @Revision: 1.9.889
+" @Last Change: 06-Mär-2006.
+" @Revision: 1.10.981
 "
 " vimscript #861
 "
@@ -130,7 +130,7 @@ if !exists("g:vikiBasicSyntax")     | let g:vikiBasicSyntax = 0          | endif
 if !exists("g:vikiFancyHeadings")   | let g:vikiFancyHeadings = 0        | endif "{{{2
 if !exists("g:vikiHomePage")        | let g:vikiHomePage = ''            | endif "{{{2
 if !exists("g:vikiHide")            | let g:vikiHide = ''                | endif "{{{2
-if !exists("g:vikiFolds")           | let g:vikiFolds = 'hl'             | endif "{{{2
+if !exists("g:vikiFolds")           | let g:vikiFolds = 'h'              | endif "{{{2
 if !exists("g:vikiIndex")           | let g:vikiIndex = 'Index'          | endif "{{{2
 
 if !exists("g:vikiMapFunctionality") "{{{2
@@ -247,6 +247,7 @@ fun! <SID>ResetSavedCursorPosition()
     let s:cursorCol  = -1
     let s:cursorVCol = -1
     let s:cursorLine = -1
+    let s:cursorWinLine = -1
     let s:cursorEol  = 0
     let s:lazyredraw = &lazyredraw
 endf
@@ -304,6 +305,7 @@ fun! <SID>VikiFindRx() "{{{3
 endf
 
 fun! <SID>EditWrapper(cmd, fname) "{{{3
+    let fname = escape(simplify(a:fname), ' ')
     if g:vikiHide == 'hide'
         exec 'hide '. a:cmd .' '. a:fname
     elseif g:vikiHide == 'update'
@@ -362,7 +364,7 @@ fun! VikiRxFromCollection(coll)
     endif
 endf
 
-" VikiMarkInexistent(line1, line2, maxcol, quick)
+" VikiMarkInexistent(line1, line2, ?maxcol, ?quick)
 " maxcol ... check only up to maxcol
 " quick  ... check only if the cursor is located after a link
 fun! <SID>VikiMarkInexistent(line1, line2, ...)
@@ -380,13 +382,14 @@ fun! <SID>VikiMarkInexistent(line1, line2, ...)
         let co0 = s:cursorCol
         let co1 = co0 - 2
     end
-    if a:0 >= 2 && a:2 > 0 && !(synIDattr(synID(li0, co1, 1), 'name') =~ '^viki.*Link$')
+    if a:0 >= 2 && a:2 > 0 && synIDattr(synID(li0, co1, 1), 'name') !~ '^viki.*Link$'
         return
     endif
 
     let lazyredraw = &lazyredraw
     set lazyredraw
 
+    let wl = winline()
     let maxcol = a:0 >= 1 ? (a:1 == -1 ? 9999999 : a:1) : 9999999
 
     if a:line1 > 0
@@ -486,7 +489,7 @@ fun! <SID>VikiMarkInexistent(line1, line2, ...)
         let b:vikiCheckInexistent = 0
     finally
         if cursorRestore
-            call VikiRestoreCursorPosition(li0, co0)
+            call VikiRestoreCursorPosition(li0, co0, '', wl)
         endif
         let &lazyredraw = lazyredraw
         if feedback
@@ -518,7 +521,9 @@ endf
 
 command! -nargs=* -range=% VikiMarkInexistent call <SID>VikiMarkInexistent(<line1>, <line2>, <f-args>)
 fun! VikiMarkInexistentInParagraph()
-    '{,'}VikiMarkInexistent
+    if getline('.') =~ '\S'
+        '{,'}VikiMarkInexistent
+    endif
 endf
 fun! VikiMarkInexistentInParagraphQuick()
     '{,'}VikiMarkInexistent -1 1
@@ -784,6 +789,10 @@ fun! <SID>LowerCharacters()
     return exists('b:vikiLowerCharacters') ? b:vikiLowerCharacters : g:vikiLowerCharacters
 endf
 
+fun! <SID>StripBackslash(string)
+    return substitute(a:string, '\\\(.\)', '\1', 'g')
+endf
+
 fun! VikiDefineHighlighting(state) "{{{3
     if version < 508
         command! -nargs=+ VikiHiLink hi link <args>
@@ -837,14 +846,21 @@ fun! <SID>MapMarkInexistent(key, element)
 endf
 
 fun! VikiRestoreCursorPosition(...)
-    let li  = a:0 >= 1 ? a:1 : s:cursorLine
-    let co  = a:0 >= 2 ? a:2 : s:cursorVCol
-    let eol = a:0 >= 3 ? a:3 : s:cursorEol
+    let li  = a:0 >= 1 && a:1 != '' ? a:1 : s:cursorLine
+    let co  = a:0 >= 2 && a:2 != '' ? a:2 : s:cursorVCol
+    let eol = a:0 >= 3 && a:3 != '' ? a:3 : s:cursorEol
+    let wli = a:0 >= 4 && a:4 != '' ? a:4 : s:cursorWinLine
     if li >= 0
         let ve = &virtualedit
         set virtualedit=all
         if eol
             let co = co + 1
+        endif
+        if wli > 0
+            let wll = li - wli + 1
+            if wll > 0
+                exe 'norm! '. wll .'zt'
+            endif
         endif
         exe 'norm! '. li .'G'. co .'|'
         let &virtualedit = ve
@@ -858,11 +874,12 @@ fun! VikiSaveCursorPosition()
     set virtualedit=all
     " let s:lazyredraw   = &lazyredraw
     " set nolazyredraw
-    let s:cursorCol  = col('.')
-    let s:cursorEol  = col('.') == col('$')
-    let s:cursorVCol = virtcol('.')
-    let &virtualedit = ve
-    let s:cursorLine = line('.')
+    let s:cursorCol     = col('.')
+    let s:cursorEol     = col('.') == col('$')
+    let s:cursorVCol    = virtcol('.')
+    let &virtualedit    = ve
+    let s:cursorLine    = line('.')
+    let s:cursorWinLine = winline()
     return ''
 endf
 
@@ -1131,11 +1148,45 @@ fun! VikiSubstituteArgs(str, ...) "{{{3
     return rv
 endf
 
+if !exists('*VikiAnchor_l')
+    fun! VikiAnchor_l(arg)
+        if a:arg =~ '^\d\+$'
+            exec a:arg
+        endif
+    endf
+endif
+
+if !exists('*VikiAnchor_line')
+    fun! VikiAnchor_line(arg)
+        call VikiAnchor_l(a:arg)
+    endf
+endif
+
+if !exists('*VikiAnchor_rx')
+    fun! VikiAnchor_rx(arg)
+        let arg = escape(<SID>StripBackslash(a:arg), '/')
+        exec 'norm! gg/'. arg .''
+    endf
+endif
+
+if !exists('*VikiAnchor_vim')
+    fun! VikiAnchor_vim(arg)
+        exec <SID>StripBackslash(a:arg)
+    endf
+endif
+
 fun! VikiFindAnchor(anchor) "{{{3
-    if a:anchor != g:vikiDefNil
+    if a:anchor == g:vikiDefNil
+        return
+    endif
+    let mode = matchstr(a:anchor, '^\(l\(ine\)\?\|rx\|vim\)\ze=')
+    if exists('*VikiAnchor_'. mode)
+        let arg  = matchstr(a:anchor, '=\zs.\+$')
+        call VikiAnchor_{mode}(arg)
+    else
         let co = col(".")
         let li = line(".")
-        let anchorRx = '\^\s*\('. b:vikiCommentStart .'\)\?\s*'. b:vikiAnchorMarker . a:anchor
+        let anchorRx = '\^\s\*\('. b:vikiCommentStart .'\)\?\s\*'. b:vikiAnchorMarker . a:anchor
         if exists("b:vikiAnchorRx")
             let varx = VikiSubstituteArgs(b:vikiAnchorRx, 'ANCHOR', a:anchor)
             let anchorRx = '\('.anchorRx.'\|'. varx .'\)'
@@ -1368,11 +1419,11 @@ fun! VikiMakeDef(v_name, v_dest, v_anchor, v_part, v_type) "{{{3
 endf
 
 fun! VikiSplitDef(def)
-    let v_name   = escape(MvElementAt(a:def, g:vikiDefSep, 0), '"')
-    let v_dest   = escape(MvElementAt(a:def, g:vikiDefSep, 1), '"')
-    let v_anchor = escape(MvElementAt(a:def, g:vikiDefSep, 2), '"')
-    let v_part   = escape(MvElementAt(a:def, g:vikiDefSep, 3), '"')
-    let v_type   = escape(MvElementAt(a:def, g:vikiDefSep, 4), '"')
+    let v_name   = escape(MvElementAt(a:def, g:vikiDefSep, 0), '"\')
+    let v_dest   = escape(MvElementAt(a:def, g:vikiDefSep, 1), '"\')
+    let v_anchor = escape(MvElementAt(a:def, g:vikiDefSep, 2), '"\')
+    let v_part   = escape(MvElementAt(a:def, g:vikiDefSep, 3), '"\')
+    let v_type   = escape(MvElementAt(a:def, g:vikiDefSep, 4), '"\')
     return 'let v_name="'. v_name .'"'
                 \ .'|let v_dest="'. v_dest .'"'
                 \ .'|let v_anchor="'. v_anchor .'"'
@@ -1438,11 +1489,8 @@ fun! <SID>VikiGetSuffix() "{{{3
 endf
 
 fun! VikiExpandSimpleName(dest, name, suffix) "{{{3
-    if a:suffix == g:vikiDefSep
-        return a:dest . g:vikiDirSeparator . a:name . <SID>VikiGetSuffix()
-    else
-        return a:dest . g:vikiDirSeparator . a:name . (a:suffix == g:vikiDefSep? "" : a:suffix)
-    endif
+    return a:dest . g:vikiDirSeparator . a:name . 
+                \ (a:suffix == g:vikiDefSep ? <SID>VikiGetSuffix() : a:suffix)
 endf
 
 fun! VikiCompleteSimpleNameDef(def) "{{{3
@@ -1958,5 +2006,24 @@ situations; other problems related to b:vikiFamily
 - VikiDefine now takes an optional fourth argument (an index file; 
 default=Index) and automatically creates a vim command with the name of 
 the interviki that opens this index file
+
+1.10
+- Pseudo anchors (not supported by deplate):
+-- Jump to a line number, e.g. [[file#l=10]] or [[file#line=10]]
+-- Find an regexp, e.g. [[file#rx=\\d]]
+-- Execute some vim code, e.g. [[file#vim=call Whatever()]]
+-- You can define your own handlers: VikiAnchor_{type}(arg)
+- g:vikiFolds: new 'b' flag: the body has a higher level than all 
+headings (gives you some kind of outliner experience; the default value 
+for g:vikiFolds was changed to 'h')
+- FIX: VikiFindAnchor didn't work properly in some situations
+- FIX: Escape blanks when following a link (this could cause problems in 
+some situations, not always)
+- FIX: Don't try to mark inexistent links in a paragraph if the current 
+line is empty.
+- FIX: Restore vertical cursor position in window after looking for 
+inexistent links.
+- FIX: Backslashes got lost in some situations.
+
 
 " vim: ff=unix

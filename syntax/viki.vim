@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 25-Jan-2006.
-" @Revision: 0.611
+" @Last Change: 13-Mär-2006.
+" @Revision: 0.613
 
 if !g:vikiEnabled
     finish
@@ -63,7 +63,8 @@ syn cluster vikiText contains=@vikiTextstyles,@vikiHyperLinks,vikiMarkers
 syn match vikiComment /^[[:blank:]]*%.*$/ contains=@vikiText
 
 " syn region vikiString start=+^[[:blank:]]\+"\|"+ end=+"[.?!]\?[[:blank:]]\+$\|"+ contains=@vikiText
-syn region vikiString start=+^"\|\s"+ end=+"+ contains=@vikiText
+" syn region vikiString start=+^"\|\s"\|[({\[]\zs"+ end=+"+ contains=@vikiText
+syn region vikiString start=+^"\|\s"\|[({\[]\zs"\|[^[:alnum:]]\zs"\ze[[:alnum:]]+ end=+"+ contains=@vikiText
 
 let b:vikiHeadingStart = '*'
 if g:vikiFancyHeadings
