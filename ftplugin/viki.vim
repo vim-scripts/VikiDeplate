@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 06-Mär-2006.
-" @Revision: 145
+" @Last Change: 29-Mär-2006.
+" @Revision: 146
 
 if !g:vikiEnabled
     finish
@@ -54,9 +54,9 @@ let b:vikiHeadingMaxLevel = 0
 " compiler deplate
 
 
-" if exists('*VikiFoldLevel')
-"     finish
-" endif
+if exists('*VikiFoldLevel')
+    finish
+endif
 
 fun! VikiFoldLevel(lnum)
     let vikiFolds = exists('b:vikiFolds') ? b:vikiFolds : g:vikiFolds

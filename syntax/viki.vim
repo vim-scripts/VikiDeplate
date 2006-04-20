@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 13-Mär-2006.
-" @Revision: 0.613
+" @Last Change: 09-Apr-2006.
+" @Revision: 0.621
 
 if !g:vikiEnabled
     finish
@@ -168,13 +168,13 @@ if version >= 508 || !exists("did_viki_syntax_inits")
       exe "hi vikiHeading term=bold,underline cterm=bold gui=bold ctermfg=". s:cm1 ."Magenta guifg=".s:cm1."Magenta". s:hdfont
   endif
   
-  let vikiPriorityListTodo = ' term=bold,underline gui=bold guifg=Black '
-  exec 'hi vikiPriorityListTodoA'. vikiPriorityListTodo  .'guibg=Red'
-  exec 'hi vikiPriorityListTodoB'. vikiPriorityListTodo  .'guibg=Orange'
-  exec 'hi vikiPriorityListTodoC'. vikiPriorityListTodo  .'guibg=Yellow'
-  exec 'hi vikiPriorityListTodoD'. vikiPriorityListTodo  .'guibg=LightMagenta'
-  exec 'hi vikiPriorityListTodoE'. vikiPriorityListTodo  .'guibg=LightYellow'
-  exec 'hi vikiPriorityListTodoF'. vikiPriorityListTodo  .'guibg=LightGreen'
+  let vikiPriorityListTodo = ' term=bold,underline cterm=bold gui=bold guifg=Black ctermfg=Black '
+  exec 'hi vikiPriorityListTodoA'. vikiPriorityListTodo  .'ctermbg=Red guibg=Red'
+  exec 'hi vikiPriorityListTodoB'. vikiPriorityListTodo  .'ctermbg=Brown guibg=Orange'
+  exec 'hi vikiPriorityListTodoC'. vikiPriorityListTodo  .'ctermbg=Yellow guibg=Yellow'
+  exec 'hi vikiPriorityListTodoD'. vikiPriorityListTodo  .'ctermbg=LightMagenta guibg=LightMagenta'
+  exec 'hi vikiPriorityListTodoE'. vikiPriorityListTodo  .'ctermbg=LightYellow guibg=LightYellow'
+  exec 'hi vikiPriorityListTodoF'. vikiPriorityListTodo  .'ctermbg=LightGreen guibg=LightGreen'
  
   " let vikiPriorityListDone = ' guifg='. s:cm1 .'Gray '
   " exec 'hi vikiPriorityListDoneA'. vikiPriorityListDone
@@ -207,7 +207,7 @@ if version >= 508 || !exists("did_viki_syntax_inits")
       HiLink vikiTypewriter vikiContinousTypewriter
   else
       " hi vikiBold term=italic,bold cterm=italic,bold gui=italic,bold
-      hi vikiBold term=bold cterm=bold gui=bold
+      hi vikiBold term=bold,underline cterm=bold,underline gui=bold
       exe "hi vikiTypewriter term=underline ctermfg=". s:cm1 ."Grey guifg=". s:cm1 ."Grey". s:twfont
   endif
 
@@ -223,7 +223,7 @@ endif
 
 " if g:vikiMarkInexistent && !exists("b:vikiCheckInexistent")
 if g:vikiMarkInexistent
-    VikiMarkInexistent
+    call VikiMarkInexistentInElement('Document')
 endif
 
 let b:current_syntax = 'viki'

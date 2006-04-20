@@ -157,6 +157,9 @@ less about page names: >
 This could then be accessed as SCI::ThisIdea, which would refer to the file 
 "~/Projects/Sci/Ideas/ThisIdea.txt".
 
+VikiDefine also defines a command (:SCI in this example) that opens a wiki's 
+index file (an optional 4th argument or "${g:vikiIndex}.${suffix}").
+
 In order to use the LaTeX enabled viki variant, add this to your |vimrc| file: >
 
     au FileType tex let b:vikiFamily="LaTeX"
@@ -277,6 +280,7 @@ A viki name is either:
     2. an extended wiki name of the form:
 
             [[destination]]
+            [[OTHERVIKI::destination]]
             [[destination][name]]
             [[destination#anchor][name]]
             [[#anchor]]
@@ -506,7 +510,7 @@ Curly braces~
 Curly braces should be escaped with a backslash (i.e., \{ and \}), as they 
 usually mark macros: >
 
-    {COMMAND [OPTIONS]: ARGS...}
+    {MACRO [OPTIONS]: ARGS...}
 <
 Short list of available macros (see also |deplate|):
     - {fn: ID}
@@ -560,13 +564,14 @@ Default Key Binding~
 a wiki syntax group -- if the second argument is 1 it tries to interpret the 
 text under the cursor as a wiki name anyway.
 
-<LocalLeader>ve ... |:VikiEdit| edit a viki page
-
-<LocalLeader><c-r> or <LocalLeader>vs ... Open in a new window
+<LocalLeader>vf ... Open in window
+<LocalLeader>vs ... Open in a new window
 <LocalLeader>vv ... Open in a new window but split vertically
     - see also |vikiSplit|
 
 <LocalLeader>v1 - <LocalLeader>v4 ... Open in window 1-4
+
+<LocalLeader>ve ... |:VikiEdit| edit a viki page
 
 <LocalLeader>vb ... |VikiGoBack()|
 <LocalLeader>vq ... |:VikiQuote| mark selected text a quoted viki name
@@ -591,7 +596,6 @@ Commands~
 
                                                     *:VikiMinorMode*
 - VikiMinorMode
-- VikiMinorModeMaybe (don't complain when Viki is already enabled)
   NOTE: Be aware that we cannot highlight a reference if the text is embedded 
   in syntax group that doesn't allow inclusion of arbitrary syntax elemtents.
 
@@ -599,7 +603,6 @@ Commands~
 - VikiMode (do additional highlighting)
   Basically the same as: >
     set ft=viki
-- VikiModeMaybe (don't complain when Viki is already enabled)
 
                                                     *:VikiFind*
                                                     *:VikiFindNext* *:VikiFindPrev*
