@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 29-Mär-2006.
-" @Revision: 146
+" @Last Change: 15-Mai-2006.
+" @Revision: 147
 
 if !g:vikiEnabled
     finish
@@ -30,7 +30,7 @@ exe "setlocal comments=:". b:vikiCommentStart
 setlocal foldmethod=expr
 setlocal foldexpr=VikiFoldLevel(v:lnum)
 setlocal expandtab
-setlocal iskeyword+=#
+setlocal iskeyword+=#,{
 
 let b:vikiEnabled = 2
 

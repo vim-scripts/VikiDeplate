@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 09-Apr-2006.
-" @Revision: 0.621
+" @Last Change: 01-Jul-2006.
+" @Revision: 0.642
 
 if !g:vikiEnabled
     finish
@@ -82,6 +82,7 @@ endif
 syn match vikiList /^[[:blank:]]\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\ze[[:blank:]]/
 syn match vikiDescription /^[[:blank:]]\+\(\\\n\|.\)\{-1,}[[:blank:]]::\ze[[:blank:]]/ contains=@vikiHyperLinks,vikiEscapedChar,vikiComment
 
+" \( \+#\S\+\)\?
 syn match vikiPriorityListTodoA /^[[:blank:]]\+\zs#\(T: \+.\{-}A.\{-}:\|\d*A\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
 syn match vikiPriorityListTodoB /^[[:blank:]]\+\zs#\(T: \+.\{-}B.\{-}:\|\d*B\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
 syn match vikiPriorityListTodoC /^[[:blank:]]\+\zs#\(T: \+.\{-}C.\{-}:\|\d*C\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
@@ -100,15 +101,49 @@ syn match vikiTableRowSep /||\?/ contained containedin=vikiTableRow,vikiTableHea
 syn region vikiTableHead start=/^[[:blank:]]*|| / skip=/\\\n/ end=/\(^\| \)||[[:blank:]]*$/ contains=ALLBUT,vikiTableRow,vikiTableHead transparent keepend
 syn region vikiTableRow  start=/^[[:blank:]]*| / skip=/\\\n/ end=/\(^\| \)|[[:blank:]]*$/ contains=ALLBUT,vikiTableRow,vikiTableHead transparent keepend
 
-syn region vikiMacro matchgroup=vikiMacroDelim start=/{[^:{}]\+:\?/ end=/}/ transparent
+syn keyword vikiCommandNames 
+            \ #CAP #CAPTION #LANG #LANGUAGE #INC #INCLUDE #DOC #VAR #KEYWORDS #OPT 
+            \ #PUT #CLIP #SET #GET #XARG #XVAL #ARG #VAL #BIB #TITLE #TI #AUTHOR 
+            \ #AU #AUTHORNOTE #AN #DATE #IMG #IMAGE #FIG #FIGURE #MAKETITLE 
+            \ #MAKEBIB #LIST #DEFLIST #REGISTER #DEFCOUNTER #COUNTER #TABLE #IDX 
+            \ #AUTOIDX #NOIDX #DONTIDX #WITH #ABBREV #MODULE #MOD #LTX #INLATEX 
+            \ #PAGE #NOP
+            \ contained containedin=vikiCommand
+
+syn keyword vikiRegionNames
+            \ #Doc #Var #Native #Ins #Write #Code #Inlatex #Ltx #Img #Image #Fig 
+            \ #Figure #Footnote #Fn #Foreach #Table #Verbatim #Verb #Abstract 
+            \ #Quote #Qu #R #Ruby #Clip #Put #Set #Header #Footer #Swallow #Skip 
+            \ contained containedin=vikiMacroDelim,vikiRegion,vikiRegionWEnd,vikiRegionAlt
+
+syn keyword vikiMacroNames 
+            \ {fn {cite {attr {attrib {date {doc {var {arg {val {xarg {xval {opt 
+            \ {msg {clip {get {ins {native {ruby {ref {anchor {label {lab {nl {ltx 
+            \ {math {$ {list {item {term {, {sub {^ {sup {super {% {stacked {: 
+            \ {text {plain {\\ {em {emph {_ {code {verb {img {cmt {pagenumber 
+            \ {pagenum {idx {let {counter 
+            \ contained containedin=vikiMacro,vikiMacroDelim
+
+syn match vikiSkeleton /{{\_.\{-}[^\\]}}/
+
+syn region vikiMacro matchgroup=vikiMacroDelim start=/{[^:{}]\+:\?/ end=/}/ 
+            \ transparent contains=@vikiText,vikiMacroNames
 
 syn match vikiCommand /^\C[[:blank:]]*#\([A-Z]\{2,}\)\>\(\\\n\|.\)*/
+            \ contains=vikiCommandNames
+
 syn region vikiRegion matchgroup=vikiMacroDelim 
-            \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\).\{-}<<\z(.\+\)$/ end=/^[[:blank:]]*\z1[[:blank:]]*$/ contains=@vikiText
+            \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\(\\\n\|.\)\{-}<<\z(.\+\)$/ 
+            \ end=/^[[:blank:]]*\z1[[:blank:]]*$/ 
+            \ contains=@vikiText,vikiRegionNames
 syn region vikiRegionWEnd matchgroup=vikiMacroDelim 
-            \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\).\{-}:[[:blank:]]*$/ end=/^[[:blank:]]*#End[[:blank:]]*$/ contains=@vikiText
+            \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\(\\\n\|.\)\{-}:[[:blank:]]*$/ 
+            \ end=/^[[:blank:]]*#End[[:blank:]]*$/ 
+            \ contains=@vikiText,vikiRegionNames
 syn region vikiRegionAlt matchgroup=vikiMacroDelim 
-            \ start=/^[[:blank:]]*\z(=\{4,}\)[[:blank:]]*\([A-Z][a-z]*\>\|!!!\).\{-}$/ end=/^[[:blank:]]*\z1\([[:blank:]].*\)\?$/ contains=@vikiText
+            \ start=/^[[:blank:]]*\z(=\{4,}\)[[:blank:]]*\([A-Z][a-z]*\>\|!!!\)\(\\\n\|.\)\{-}$/ 
+            \ end=/^[[:blank:]]*\z1\([[:blank:]].*\)\?$/ 
+            \ contains=@vikiText,vikiRegionNames
 
 
 " Define the default highlighting.
@@ -213,10 +248,17 @@ if version >= 508 || !exists("did_viki_syntax_inits")
 
   HiLink vikiMacroHead Statement
   HiLink vikiMacroDelim Identifier
+  HiLink vikiSkeleton Special
   HiLink vikiCommand Statement
   HiLink vikiRegion Statement
   HiLink vikiRegionWEnd vikiRegion
   HiLink vikiRegionAlt vikiRegion
+  " HiLink vikiCommandNames Constant
+  " HiLink vikiRegionNames Constant
+  " HiLink vikiMacroNames Constant
+  HiLink vikiCommandNames Identifier
+  HiLink vikiRegionNames Identifier
+  HiLink vikiMacroNames Identifier
  
   delcommand HiLink
 endif

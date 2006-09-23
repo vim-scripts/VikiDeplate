@@ -2,13 +2,13 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 20-Apr-2006.
-" @Revision: 1.11.1302
+" @Last Change: 23-Sep-2006.
+" @Revision: 1.12.1348
 "
 " vimscript #861
 "
 " Short Description:
-" This plugin adds wiki-like hypertext capabilities to any document. 
+" This plugin adds wiki-like hypertext capabilities to any document.  
 " Just type :VikiMinorMode and all wiki names will be highlighted. If 
 " you press <c-cr> when the cursor is over a wiki name, you jump to (or 
 " create) the referred page. When invoked as :VikiMode or via :set 
@@ -23,11 +23,14 @@
 " - kpsewhich (not a vim plugin :-) for vikiLaTeX
 "
 " TODO:
+" - Per Interviki viki name patterns
+" - Allow Wiki links like ::Word or even ::word (not in minor mode due 
+"   possible conflict with various programming languages?)
 " - New region: file listing (auto-generate/update a file listing; i.e.  
 "   the region content is automatically generated when opening a file or 
 "   so)
-" - VikiRename: rename links/files (requires a cross-plattform grep or 
-"   similar; maybe 7.0)
+" - :VikiRename command: rename links/files (requires a cross-plattform 
+"   grep or similar; maybe 7.0)
 " - don't know how to deal with viki names that span several lines (e.g.  
 "   in LaTeX mode)
 "   
@@ -44,7 +47,7 @@ if !exists("loaded_multvals") || loaded_multvals < 308 "{{{2
     echoerr "Viki.vim requires multvals.vim >= 308"
     finish
 endif
-let loaded_viki = 111
+let loaded_viki = 112
 
 let g:vikiDefNil  = ''
 let g:vikiDefSep  = "\n"
@@ -83,7 +86,7 @@ endif
 if !exists("g:vikiSpecialFiles") "{{{2
     let g:vikiSpecialFiles = 'gif\|bmp\|eps\|png\|jpe\?g\|wm[fav]\|e\?ps'
                 \ .'\|mp\d\|ogg\|m3u\|mpe\?g\|avi\|aac\|voc\|wav\|aiff\?\|au'
-                \ .'\|pdf\|dvi\|doc\|xls\|html\?\|doc\|rtf\|xls\|od[gts]'
+                \ .'\|pdf\|dvi\|html\?\|doc\|rtf\|xls\|ppt\|od[gts]'
 endif
 
 if !exists("g:vikiSpecialFilesExceptions") "{{{2
@@ -131,7 +134,7 @@ if !exists("g:vikiFancyHeadings")   | let g:vikiFancyHeadings = 0        | endif
 if !exists("g:vikiHomePage")        | let g:vikiHomePage = ''            | endif "{{{2
 if !exists("g:vikiHide")            | let g:vikiHide = ''                | endif "{{{2
 if !exists("g:vikiFolds")           | let g:vikiFolds = 'h'              | endif "{{{2
-if !exists("g:vikiIndex")           | let g:vikiIndex = 'Index'          | endif "{{{2
+if !exists("g:vikiIndex")           | let g:vikiIndex = 'index'          | endif "{{{2
 if !exists("g:vikiFeedbackMin")     | let g:vikiFeedbackMin = 5          | endif "{{{2
 if !exists("g:vikiMapLeader")       | let g:vikiMapLeader = '<LocalLeader>v' | endif "{{{2
 
@@ -280,7 +283,7 @@ fun! VikiDefine(name, prefix, ...) "{{{3
     let index = a:0 >= 2 && a:2 != '' ? a:2 : g:vikiIndex
     let findex = g:vikiInter{a:name} .'/'. index . g:vikiInter{a:name}_suffix
     if filereadable(findex)
-        let vname = VikiMakeName(a:name, index)
+        let vname = VikiMakeName(a:name, index, 0)
     else
         " let vname = '[['. a:name .'::]]'
         let vname = a:name .'::'
@@ -323,16 +326,16 @@ endf
 fun! <SID>EditWrapper(cmd, fname) "{{{3
     let fname = escape(simplify(a:fname), ' ')
     if a:cmd =~ g:vikiNoWrapper
-        exec a:cmd .' '. a:fname
+        exec a:cmd .' '. fname
     else
         try
             if g:vikiHide == 'hide'
-                exec 'hide '. a:cmd .' '. a:fname
+                exec 'hide '. a:cmd .' '. fname
             elseif g:vikiHide == 'update'
                 update
-                exec a:cmd .' '. a:fname
+                exec a:cmd .' '. fname
             else
-                exec a:cmd .' '. a:fname
+                exec a:cmd .' '. fname
             endif
         catch /^Vim\%((\a\+)\)\=:E37/
             echoerr "Vim raised E37: You tried to abondon a dirty buffer (see :h E37)"
@@ -553,7 +556,8 @@ fun! VikiMarkInexistentInElement(elt) "{{{3
     let lr = &lazyredraw
     set lazyredraw
     call VikiSaveCursorPosition()
-    lockmarks call <SID>VikiMarkInexistentIn{a:elt}()
+    " lockmarks call <SID>VikiMarkInexistentIn{a:elt}()
+    call <SID>VikiMarkInexistentIn{a:elt}()
     call VikiRestoreCursorPosition()
     call <SID>ResetSavedCursorPosition()
     let &lazyredraw = lr
@@ -828,9 +832,11 @@ fun! VikiGetSimpleRx4SimpleWikiName() "{{{3
     return simpleWikiName
 endf
 
-fun! VikiMakeName(iviki, name) "{{{3
-    let name = a:name
-    if name !~ '\C'. VikiGetSimpleRx4SimpleWikiName()
+" VikiMakeName(iviki, name, ?quote=1)
+fun! VikiMakeName(iviki, name, ...) "{{{3
+    let quote = a:0 >= 1 ? a:1 : 1
+    let name  = a:name
+    if quote && name !~ '\C'. VikiGetSimpleRx4SimpleWikiName()
         let name = '[-'. name .'-]'
     endif
     if a:iviki != ''
@@ -1382,6 +1388,7 @@ endf
 fun! <SID>EditLocalFile(cmd, fname, fi, li, co, anchor) "{{{3
     let vf = <SID>Family()
     let cb = bufnr('%')
+    call <SID>EnsureDir(fnamemodify(a:fname, ':p:h'))
     call <SID>EditWrapper(a:cmd, a:fname)
     if cb != bufnr('%')
         set buflisted
@@ -1394,6 +1401,16 @@ fun! <SID>EditLocalFile(cmd, fname, fi, li, co, anchor) "{{{3
         call VikiDispatchOnFamily('VikiMinorMode', vf, 1)
     endif
     call VikiDispatchOnFamily('VikiFindAnchor', vf, a:anchor)
+endf
+
+fun! <SID>EnsureDir(dir) "{{{3
+    if isdirectory(a:dir)
+        return
+    elseif filereadable(a:dir)
+        echoerr 'Viki: Not a directory: '. a:dir
+    else
+        call mkdir(a:dir, 'p')
+    endif
 endf
 
 fun! <SID>Family(...) "{{{3
@@ -1613,6 +1630,14 @@ fun! VikiLinkDefinition(txt, col, compound, ignoreSyntax, type) "{{{3
     endif
 endf
 
+fun! <SID>WithSuffix(fname)
+    if isdirectory(a:fname)
+        return a:fname
+    else
+        return a:fname.<SID>VikiGetSuffix()
+    endif
+endf
+
 fun! <SID>VikiGetSuffix() "{{{3
     if exists("b:vikiNameSuffix")
         return b:vikiNameSuffix
@@ -1630,8 +1655,14 @@ fun! VikiExpandSimpleName(dest, name, suffix) "{{{3
     if a:name == ''
         return a:dest
     else
-        return a:dest . g:vikiDirSeparator . a:name . 
-                    \ (a:suffix == g:vikiDefSep ? <SID>VikiGetSuffix() : a:suffix)
+        let dest = a:dest . g:vikiDirSeparator . a:name
+        if a:suffix == g:vikiDefSep
+            return <SID>WithSuffix(dest)
+        elseif isdirectory(dest)
+            return dest
+        else
+            return dest . a:suffix
+        endif
     endif
 endf
 
@@ -1702,9 +1733,12 @@ fun! VikiCompleteExtendedNameDef(def) "{{{3
         let ow = substitute(v_dest, s:InterVikiRx, '\1', "")
         exec <SID>VikiLetVar("idest", "vikiInter".ow)
         if exists("idest")
-            let idest = expand(idest)
-            let v_dest  = substitute(v_dest, s:InterVikiRx, '\2', "")
+            let idest  = fnamemodify(idest, ':p')
+            let v_dest = substitute(v_dest, s:InterVikiRx, '\2', "")
             exec <SID>VikiLetVar("useSuffix", "vikiInter".ow."_suffix")
+            if v_dest =~ '\V.\?'. escape(useSuffix, '\') .'\$'
+                let useSuffix = ''
+            endif
             let v_dest = VikiExpandSimpleName(idest, v_dest, useSuffix)
         else
             " throw "Viki: InterViki is not defined: ".ow
@@ -1726,7 +1760,7 @@ fun! VikiCompleteExtendedNameDef(def) "{{{3
         if v_dest != '' && v_dest != g:vikiSelfRef && !VikiIsSpecial(v_dest)
             let mod = <SID>ExtendedModifier(v_part)
             if fnamemodify(v_dest, ':e') == '' && mod !~# '!'
-                let v_dest = v_dest.<SID>VikiGetSuffix()
+                let v_dest = <SID>WithSuffix(v_dest)
             endif
         endif
     endif
@@ -1897,7 +1931,7 @@ fun! VikiEdit(name, ...) "{{{3
     else
         let name = a:name
     end
-    let name = substitute(name, '[\\]', '/', 'g')
+    let name = substitute(name, '\\', '/', 'g')
     if !exists('b:vikiNameTypes')
         call VikiSetBufferVar('vikiNameTypes')
         call VikiDispatchOnFamily('VikiSetupBuffer', '', 0)
@@ -1925,9 +1959,9 @@ fun! <SID>VikiEditCompleteAgent(interviki, afname, fname) "{{{3
         else
             let name = a:fname
         endif
-        if name !~ '\C'. VikiGetSimpleRx4SimpleWikiName()
-            let name = '[-'. a:fname .'-]'
-        endif
+        " if name !~ '\C'. VikiGetSimpleRx4SimpleWikiName()
+        "     let name = '[-'. a:fname .'-]'
+        " endif
         if a:interviki != ''
             let name = a:interviki .'::'. name
         endif
@@ -1959,9 +1993,9 @@ endf
 
 fun! VikiIndex() "{{{3
     if exists('b:vikiIndex')
-        let fname = b:vikiIndex . <SID>VikiGetSuffix()
+        let fname = <SID>WithSuffix(b:vikiIndex)
     else
-        let fname = g:vikiIndex . <SID>VikiGetSuffix()
+        let fname = <SID>WithSuffix(g:vikiIndex)
     endif
     if filereadable(fname)
         return VikiOpenLink(fname, '')
@@ -1979,6 +2013,7 @@ command! -nargs=1 -bang -complete=custom,VikiEditComplete VikiEditInWin3 :call V
 command! -nargs=1 -bang -complete=custom,VikiEditComplete VikiEditInWin4 :call VikiEdit(<q-args>, "<bang>", 4)
 
 command! VikiHome :call VikiEdit('*', '!')
+command! VIKI :call VikiEdit('*', '!')
 
 finish "{{{1
 _____________________________________________________________________________________
@@ -2213,5 +2248,19 @@ in vim 6.4)
 - OBSOLETE: g:vikiMapMouse
 - REMOVED: mapping to <LocalLeader><c-cr>
 - DEPRECATED: VikiModeMaybe
+
+1.12
+- Define some keywords in syntax file (useful for omnicompletion)
+- Define :VIKI command as an alias for :VikiHome
+- FIX: Problem with names containing spaces
+- FIX: Extended names with suffix & interviki
+- FIX: Indentation of priority lists.
+- FIX: VikiDefine created wrong (old-fashioned) VikiEdit commands under 
+certain conditions.
+- FIX: Directories in extended viki names + interviki names were marked 
+as inexistent
+- FIX: Syntax highlighting of regions or commands the headline of which 
+spanned several lines
+- Added ppt to g:vikiSpecialFiles.
 
 " vim: ff=unix
