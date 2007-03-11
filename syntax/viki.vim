@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 01-Jul-2006.
-" @Revision: 0.642
+" @Last Change: 2007-02-25.
+" @Revision: 0.673
 
 if !g:vikiEnabled
     finish
@@ -83,13 +83,15 @@ syn match vikiList /^[[:blank:]]\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\ze[[:bla
 syn match vikiDescription /^[[:blank:]]\+\(\\\n\|.\)\{-1,}[[:blank:]]::\ze[[:blank:]]/ contains=@vikiHyperLinks,vikiEscapedChar,vikiComment
 
 " \( \+#\S\+\)\?
-syn match vikiPriorityListTodoA /^[[:blank:]]\+\zs#\(T: \+.\{-}A.\{-}:\|\d*A\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
-syn match vikiPriorityListTodoB /^[[:blank:]]\+\zs#\(T: \+.\{-}B.\{-}:\|\d*B\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
-syn match vikiPriorityListTodoC /^[[:blank:]]\+\zs#\(T: \+.\{-}C.\{-}:\|\d*C\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
-syn match vikiPriorityListTodoD /^[[:blank:]]\+\zs#\(T: \+.\{-}D.\{-}:\|\d*D\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
-syn match vikiPriorityListTodoE /^[[:blank:]]\+\zs#\(T: \+.\{-}E.\{-}:\|\d*E\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
-syn match vikiPriorityListTodoF /^[[:blank:]]\+\zs#\(T: \+.\{-}F.\{-}:\|\d*F\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\ze /
+syn match vikiPriorityListTodoGen /^[[:blank:]]\+\zs#\(T: \+.\{-}\u.\{-}:\|\d*\u\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\( \+\[[^[].\{-}\]\)\?\ze /
+syn match vikiPriorityListTodoA /^[[:blank:]]\+\zs#\(T: \+.\{-}A.\{-}:\|\d*A\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\( \+\[[^[].\{-}\]\)\?\ze /
+syn match vikiPriorityListTodoB /^[[:blank:]]\+\zs#\(T: \+.\{-}B.\{-}:\|\d*B\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\( \+\[[^[].\{-}\]\)\?\ze /
+syn match vikiPriorityListTodoC /^[[:blank:]]\+\zs#\(T: \+.\{-}C.\{-}:\|\d*C\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\( \+\[[^[].\{-}\]\)\?\ze /
+syn match vikiPriorityListTodoD /^[[:blank:]]\+\zs#\(T: \+.\{-}D.\{-}:\|\d*D\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\( \+\[[^[].\{-}\]\)\?\ze /
+syn match vikiPriorityListTodoE /^[[:blank:]]\+\zs#\(T: \+.\{-}E.\{-}:\|\d*E\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\( \+\[[^[].\{-}\]\)\?\ze /
+syn match vikiPriorityListTodoF /^[[:blank:]]\+\zs#\(T: \+.\{-}F.\{-}:\|\d*F\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\( \+\[[^[].\{-}\]\)\?\ze /
 
+syn match vikiPriorityListDoneGen /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}\u.\{-}:\|\(T: \+\)\?\d*\u\d* \+x[0-9%-]*\):\? .*/
 syn match vikiPriorityListDoneA /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}A.\{-}:\|\(T: \+\)\?\d*A\d* \+x[0-9%-]*\):\? .*/
 syn match vikiPriorityListDoneB /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}B.\{-}:\|\(T: \+\)\?\d*B\d* \+x[0-9%-]*\):\? .*/
 syn match vikiPriorityListDoneC /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}C.\{-}:\|\(T: \+\)\?\d*C\d* \+x[0-9%-]*\):\? .*/
@@ -126,14 +128,14 @@ syn keyword vikiMacroNames
 
 syn match vikiSkeleton /{{\_.\{-}[^\\]}}/
 
-syn region vikiMacro matchgroup=vikiMacroDelim start=/{[^:{}]\+:\?/ end=/}/ 
-            \ transparent contains=@vikiText,vikiMacroNames
+syn region vikiMacro matchgroup=vikiMacroDelim start=/{\W\?[^:{}]*:\?/ end=/}/ 
+            \ transparent contains=@vikiText,vikiMacroNames,vikiMacro
 
 syn match vikiCommand /^\C[[:blank:]]*#\([A-Z]\{2,}\)\>\(\\\n\|.\)*/
             \ contains=vikiCommandNames
 
 syn region vikiRegion matchgroup=vikiMacroDelim 
-            \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\(\\\n\|.\)\{-}<<\z(.\+\)$/ 
+            \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\(\\\n\|.\)\{-}<<\z(.*\)$/ 
             \ end=/^[[:blank:]]*\z1[[:blank:]]*$/ 
             \ contains=@vikiText,vikiRegionNames
 syn region vikiRegionWEnd matchgroup=vikiMacroDelim 
@@ -144,6 +146,16 @@ syn region vikiRegionAlt matchgroup=vikiMacroDelim
             \ start=/^[[:blank:]]*\z(=\{4,}\)[[:blank:]]*\([A-Z][a-z]*\>\|!!!\)\(\\\n\|.\)\{-}$/ 
             \ end=/^[[:blank:]]*\z1\([[:blank:]].*\)\?$/ 
             \ contains=@vikiText,vikiRegionNames
+
+
+" if g:vikiHighlightMath == 'latex'
+"     runtime! syntax/tex.vim
+"     unlet b:current_syntax
+"     highlight clear texOption
+"     highlight clear texSpecialChar
+"     " based on syntax/tex.vim
+"     syn region vikiMathZone matchgroup=Delimiter start="\$" skip="\\\\\|\\\$" matchgroup=Delimiter end="\$" end="%stopzone\>"	contains=@texMathZoneGroup
+" endif
 
 
 " Define the default highlighting.
@@ -204,6 +216,7 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   endif
   
   let vikiPriorityListTodo = ' term=bold,underline cterm=bold gui=bold guifg=Black ctermfg=Black '
+  exec 'hi vikiPriorityListTodoGen'. vikiPriorityListTodo  .'ctermbg=LightRed guibg=LightRed'
   exec 'hi vikiPriorityListTodoA'. vikiPriorityListTodo  .'ctermbg=Red guibg=Red'
   exec 'hi vikiPriorityListTodoB'. vikiPriorityListTodo  .'ctermbg=Brown guibg=Orange'
   exec 'hi vikiPriorityListTodoC'. vikiPriorityListTodo  .'ctermbg=Yellow guibg=Yellow'
@@ -224,6 +237,7 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   HiLink vikiPriorityListDoneD Comment
   HiLink vikiPriorityListDoneE Comment
   HiLink vikiPriorityListDoneF Comment
+  HiLink vikiPriorityListDoneGen Comment
   
   exe "hi vikiTableRowSep term=bold cterm=bold gui=bold ctermbg=". s:cm2 ."Grey guibg=". s:cm2 ."Grey"
   
@@ -259,7 +273,7 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   HiLink vikiCommandNames Identifier
   HiLink vikiRegionNames Identifier
   HiLink vikiMacroNames Identifier
- 
+
   delcommand HiLink
 endif
 

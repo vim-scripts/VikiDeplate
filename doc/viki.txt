@@ -160,6 +160,22 @@ This could then be accessed as SCI::ThisIdea, which would refer to the file
 VikiDefine also defines a command (:SCI in this example) that opens a wiki's 
 index file (an optional 4th argument or "${g:vikiIndex}.${suffix}").
 
+Intervikis can also be defined as patterns or functions as in the following 
+example: >
+
+    fun! GetAddress(vikiname)
+        let surname = substitute(a:vikiname, '^\(\u.\{-}\)\(\u\U*\)\?$', '\1', '')
+        let firstname  = substitute(a:vikiname, '^\(\u.\{-}\)\(\u\U*\)\?$', '\2', '')
+        return 'https://www.example.com/cgi/search.cgi?search='. surname .','. firstname
+    endf
+
+    call VikiDefine('CONTACT', '*GetAddress("%s")')
+    call VikiDefine('INDEX', '%/foo/%s/index.html')
+
+CONTACT::JohnDoe would the refer to 
+https://www.example.com/cgi/search.cgi?search=Dow,John and [[INDEX::bar]] 
+would refer to /foo/bar/index.html
+
 In order to use the LaTeX enabled viki variant, add this to your |vimrc| file: >
 
     au FileType tex let b:vikiFamily="LaTeX"
@@ -306,6 +322,16 @@ A viki name is either:
         It is assumed that these URLs should be opened with an external 
         program; this behaviour can be changed by redefining the function 
         |VikiOpenSpecialProtocol()|.
+
+    4. Hyperwords (not supported by deplate)
+        Hyperwords are defined in either ./.vikiWords or &rtp[0]/vikiWords.txt 
+        each word in a line in the form "word destination" (lines beginning  
+        with '%' are ignored). These words are automatically highlighted.  
+        Depending on your setting of |vikiNameTypes|, viki may try to make 
+        hyperwords out of the filenames in the current buffer's directory.  
+        I.e. if |vikiNameSuffix| is '.txt' and there is a file 'example.txt' 
+        in the same directory as the current buffer's file, then each 
+        occurrence of the word 'example' will be turned into a clickable link.
 
 Adding #[a-z0-9]\+ to the wiki name denotes a reference to a specific anchor.  
 Examples for wiki names referring to an anchor: >
@@ -836,13 +862,16 @@ Etc:
     Any positive number ... open always in this window
 
 - b:vikiNameTypes, g:vikiNameTypes                  *vikiNameTypes*
-    Default value: "csSeui"
+    Default value: "csSeuixwf"
         s ... Simple viki name 
             c ... CamelCase 
             S ... simple, quoted viki name
             i ... |interviki|
+            w ... Hyperwords
+                f ... file-bases hyperwords
         e ... Extended viki name
         u ... URL
+        x ... Directives (some commands, regions ...)
     Disable certain types of viki names globally or for a single buffer.
     (experimental, doesn't fully work yet)
 
@@ -878,12 +907,23 @@ Etc:
     b:vikiMaxFoldLevel. I.e., if you set |foldlevel| to 1, you will see only 
     the text at level b:vikiMaxFoldLevel.
 
-- g:vikiFolds                                       *g:vikiFolds*
+- g:vikiFoldBodyLevel, b:vikiFoldBodyLevel          *vikiFoldBodyLevel*
+    Default: 4
+    If set to 0, the "b" mode in |vikiFolds| will set the body level depending 
+    on the headings used in the current buffer. Otherwise 
+    g:vikiHeadingMaxLevel + 1 will be used.
+
+- g:vikiFolds, b:vikiFolds                          *vikiFolds*
     Default: hl
     Define which elements should be folded:
         h :: Heading
         H :: Headings (but inverse folding)
         l :: Lists
+        b :: The body has max heading level + 1. This is slightly faster 
+          than the other version as vim never has to scan the text; but 
+          the behaviour may vary depending on the sequence of headings if 
+          |vikiFoldBodyLevel| is set to 0.
+        s :: ???
 
 - b:vikiNoSimpleNames                               *b:vikiNoSimpleNames*
     Default: 0

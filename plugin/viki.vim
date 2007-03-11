@@ -2,17 +2,17 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 23-Sep-2006.
-" @Revision: 1.12.1348
+" @Last Change: 2007-03-11.
+" @Revision: 1.13.1630
 "
 " vimscript #861
 "
 " Short Description:
-" This plugin adds wiki-like hypertext capabilities to any document.  
-" Just type :VikiMinorMode and all wiki names will be highlighted. If 
-" you press <c-cr> when the cursor is over a wiki name, you jump to (or 
-" create) the referred page. When invoked as :VikiMode or via :set 
-" ft=viki additional highlighting is provided.
+" This plugin adds wiki-like hypertext capabilities to any document.  Just 
+" type :VikiMinorMode and all wiki names will be highlighted. If you press 
+" <c-cr> when the cursor is over a wiki name, you jump to (or create) the 
+" referred page. When invoked as :VikiMode or via :set ft=viki additional 
+" highlighting is provided.
 "
 " Requirements:
 " - multvals.vim (vimscript #171, >= 3.6.2, 13-Sep-2004)
@@ -23,19 +23,21 @@
 " - kpsewhich (not a vim plugin :-) for vikiLaTeX
 "
 " TODO:
-" - Per Interviki viki name patterns
+" - use lists instead of multvals
+" - use netrw external file handlers instead of maintaining own handlers
+" - cache inexistent patterns (check for file atime & size)
+" - File names containing #
+" - Per Interviki simple name patterns
 " - Allow Wiki links like ::Word or even ::word (not in minor mode due 
 "   possible conflict with various programming languages?)
-" - New region: file listing (auto-generate/update a file listing; i.e.  
-"   the region content is automatically generated when opening a file or 
-"   so)
-" - :VikiRename command: rename links/files (requires a cross-plattform 
-"   grep or similar; maybe 7.0)
-" - don't know how to deal with viki names that span several lines (e.g.  
-"   in LaTeX mode)
+" - New region: file listing (auto-generate/update a file listing; i.e.  the 
+"   region content is automatically generated when opening a file or so)
+" - :VikiRename command: rename links/files (requires a cross-plattform grep 
+"   or similar; maybe 7.0)
+" - don't know how to deal with viki names that span several lines (e.g.  in 
+"   LaTeX mode)
 "   
 " Change Log: (See bottom of file)
-" 
 
 if &cp || exists("loaded_viki") "{{{2
     finish
@@ -47,13 +49,15 @@ if !exists("loaded_multvals") || loaded_multvals < 308 "{{{2
     echoerr "Viki.vim requires multvals.vim >= 308"
     finish
 endif
-let loaded_viki = 112
+let loaded_viki = 113
 
 let g:vikiDefNil  = ''
 let g:vikiDefSep  = "\n"
 
 let s:vikiSelfEsc = '\'
 let g:vikiSelfRef = '.'
+
+" let s:vikiEnabledID = loaded_viki .'_'. strftime('%c')
 
 if !exists("g:vikiEnabled") "{{{2
     let g:vikiEnabled = 1
@@ -117,7 +121,7 @@ if !exists("g:vikiUseParentSuffix") | let g:vikiUseParentSuffix = 0      | endif
 if !exists("g:vikiNameSuffix")      | let g:vikiNameSuffix = ""          | endif "{{{2
 if !exists("g:vikiAnchorMarker")    | let g:vikiAnchorMarker = "#"       | endif "{{{2
 if !exists("g:vikiFreeMarker")      | let g:vikiFreeMarker = 0           | endif "{{{2
-if !exists("g:vikiNameTypes")       | let g:vikiNameTypes = "csSeuix"    | endif "{{{2
+if !exists("g:vikiNameTypes")       | let g:vikiNameTypes = "csSeuixwf"  | endif "{{{2
 if !exists("g:vikiSaveHistory")     | let g:vikiSaveHistory = 0          | endif "{{{2
 if !exists("g:vikiExplorer")        | let g:vikiExplorer = "Sexplore"    | endif "{{{2
 if !exists("g:vikiNoWrapper")       | let g:vikiNoWrapper = '\cexplore'  | endif "{{{2
@@ -131,12 +135,23 @@ if !exists("g:vikiDirSeparator")    | let g:vikiDirSeparator = "/"       | endif
 if !exists("g:vikiTextstylesVer")   | let g:vikiTextstylesVer = 2        | endif "{{{2
 if !exists("g:vikiBasicSyntax")     | let g:vikiBasicSyntax = 0          | endif "{{{2
 if !exists("g:vikiFancyHeadings")   | let g:vikiFancyHeadings = 0        | endif "{{{2
+if !exists("g:vikiFoldBodyLevel")   | let g:vikiFoldBodyLevel = 5        | endif "{{{2
 if !exists("g:vikiHomePage")        | let g:vikiHomePage = ''            | endif "{{{2
 if !exists("g:vikiHide")            | let g:vikiHide = ''                | endif "{{{2
 if !exists("g:vikiFolds")           | let g:vikiFolds = 'h'              | endif "{{{2
 if !exists("g:vikiIndex")           | let g:vikiIndex = 'index'          | endif "{{{2
 if !exists("g:vikiFeedbackMin")     | let g:vikiFeedbackMin = 5          | endif "{{{2
 if !exists("g:vikiMapLeader")       | let g:vikiMapLeader = '<LocalLeader>v' | endif "{{{2
+if !exists("g:vikiAutoMarks")       | let g:vikiAutoMarks = 1            | endif "{{{2
+" if !exists("g:vikiOpenInWindow")    | let g:vikiOpenInWindow = ''        | endif "{{{2
+if !exists("g:vikiHighlightMath")   | let g:vikiHighlightMath = ''       | endif "{{{2
+
+if v:version >= 700 && !exists("g:vikiHyperWordsFiles") "{{{2
+    let g:vikiHyperWordsFiles = [
+                \ './.vikiWords',
+                \ get(split(&rtp, ','), 0).'/vikiWords.txt'
+                \ ]
+endif
 
 if !exists("g:vikiMapFunctionality") "{{{2
     " c     ... follow link (c-cr)
@@ -268,6 +283,16 @@ endf
 
 call <SID>ResetSavedCursorPosition()
 
+fun! <SID>sprintf1(string, arg) "{{{3
+    if exists('printf')
+        return printf(string, a:arg)
+    else
+        let rv = substitute(a:string, '\C[^%]\zs%s', escape(a:arg, '"\'), 'g')
+        let rv = substitute(rv, '%%', '%', 'g')
+        return rv
+    end
+endf
+
 let s:InterVikiRx = '^\(['. g:vikiUpperCharacters .']\+\)::\(.*\)$'
 let s:InterVikis  = ''
 
@@ -324,7 +349,7 @@ fun! <SID>VikiFindRx() "{{{3
 endf
 
 fun! <SID>EditWrapper(cmd, fname) "{{{3
-    let fname = escape(simplify(a:fname), ' ')
+    let fname = escape(simplify(a:fname), ' %#')
     if a:cmd =~ g:vikiNoWrapper
         exec a:cmd .' '. fname
     else
@@ -472,13 +497,19 @@ fun! <SID>VikiMarkInexistent(line1, line2, ...) "{{{3
                 " let v_dest = MvElementAt(def, g:vikiDefSep, 1)
                 " let v_part = MvElementAt(def, g:vikiDefSep, 3)
                 if v_part =~ '^'. b:vikiSimpleNameSimpleRx .'$'
-                    let check = 1
-                    let partx = escape(v_part, "'\"\\/")
-                    if partx !~ '^\['
-                        let partx = '\<'.partx
-                    endif
-                    if partx !~ '\]$'
-                        let partx = partx.'\>'
+                    if v_dest =~ g:vikiSpecialProtocols
+                        let check = 0
+                    elseif v:version >= 700 && has_key(b:vikiHyperWordTable, v_part)
+                        let check = 0
+                    else
+                        let check = 1
+                        let partx = escape(v_part, "'\"\\/")
+                        if partx !~ '^\['
+                            let partx = '\<'.partx
+                        endif
+                        if partx !~ '\]$'
+                            let partx = partx.'\>'
+                        endif
                     endif
                 elseif v_dest =~ '^'. b:vikiUrlSimpleRx .'$'
                     let check = 0
@@ -552,17 +583,37 @@ endf
 
 command! -nargs=* -range=% VikiMarkInexistent call <SID>VikiMarkInexistentInRange(<line1>, <line2>)
 
-fun! VikiMarkInexistentInElement(elt) "{{{3
-    let lr = &lazyredraw
-    set lazyredraw
-    call VikiSaveCursorPosition()
-    " lockmarks call <SID>VikiMarkInexistentIn{a:elt}()
-    call <SID>VikiMarkInexistentIn{a:elt}()
-    call VikiRestoreCursorPosition()
-    call <SID>ResetSavedCursorPosition()
-    let &lazyredraw = lr
-    return ''
-endf
+if v:version == 700 && !has('patch8')
+    fun! s:SID()
+        let fullname = expand("<sfile>")
+        return matchstr(fullname, '<SNR>\d\+_')
+    endf
+
+    fun! VikiMarkInexistentInElement(elt) "{{{3
+        let lr = &lazyredraw
+        set lazyredraw
+        call VikiSaveCursorPosition()
+        let kpk = s:SID() . "VikiMarkInexistentIn" . a:elt
+        call {kpk}()
+        call VikiRestoreCursorPosition()
+        call <SID>ResetSavedCursorPosition()
+        let &lazyredraw = lr
+        return ''
+    endf
+else
+    fun! VikiMarkInexistentInElement(elt) "{{{3
+        let lr = &lazyredraw
+        set lazyredraw
+        call VikiSaveCursorPosition()
+        " lockmarks call <SID>VikiMarkInexistentIn{a:elt}()
+        " call <SID>VikiMarkInexistentIn{a:elt}()
+        call s:VikiMarkInexistentIn{a:elt}()
+        call VikiRestoreCursorPosition()
+        call <SID>ResetSavedCursorPosition()
+        let &lazyredraw = lr
+        return ''
+    endf
+endif
 
 fun! <SID>VikiMarkInexistentInRange(line1, line2) "{{{3
     call VikiSaveCursorPosition()
@@ -598,10 +649,6 @@ fun! VikiCheckInexistent() "{{{3
         call <SID>VikiMarkInexistentInRange(b:vikiCheckInexistent, b:vikiCheckInexistent)
     endif
 endf
-
-autocmd BufEnter * call VikiMinorModeReset()
-autocmd BufEnter * call VikiCheckInexistent()
-autocmd VimLeavePre * let g:vikiEnabled = 0
 
 fun! VikiSetBufferVar(name, ...) "{{{3
     if !exists('b:'.a:name)
@@ -683,7 +730,7 @@ fun! VikiSetupBuffer(state, ...) "{{{3
     call VikiSetBufferVar("vikiSpecialProtocolsExceptions")
     call VikiSetBufferVar("vikiMarkInexistent")
     call VikiSetBufferVar("vikiTextstylesVer")
-    call VikiSetBufferVar("vikiTextstylesVer")
+    " call VikiSetBufferVar("vikiTextstylesVer")
     call VikiSetBufferVar("vikiLowerCharacters")
     call VikiSetBufferVar("vikiUpperCharacters")
     call VikiSetBufferVar("vikiFeedbackMin")
@@ -709,7 +756,8 @@ fun! VikiSetupBuffer(state, ...) "{{{3
     
     let interviki = '\<['. b:vikiUpperCharacters .']\+::'
 
-    if <SID>IsSupportedType("sSc") && !(dontSetup =~? "s")
+    " if <SID>IsSupportedType("sSc") && !(dontSetup =~? "s")
+    if <SID>IsSupportedType("s") && !(dontSetup =~? "s")
         if <SID>IsSupportedType("S") && !(dontSetup =~# "S")
             let quotedVikiName = b:vikiSimpleNameQuoteBeg 
                         \ .'['. b:vikiSimpleNameQuoteChars .']'
@@ -725,11 +773,67 @@ fun! VikiSetupBuffer(state, ...) "{{{3
         else
             let simpleWikiName = ""
         endif
+        let simpleHyperWords = ''
+        if v:version >= 700 && <SID>IsSupportedType('w') && !(dontSetup =~# 'w')
+            let b:vikiHyperWordTable = {}
+            if <SID>IsSupportedType('f') && !(dontSetup =~# 'f')
+                let patterns = []
+                if exists('b:vikiNameSuffix')
+                    call add(patterns, b:vikiNameSuffix)
+                endif
+                if g:vikiNameSuffix != '' && index(patterns, g:vikiNameSuffix) == -1
+                    call add(patterns, g:vikiNameSuffix)
+                end
+                let suffix = '.'. expand('%:e')
+                if suffix != '.' && index(patterns, suffix) == -1
+                    call add(patterns, suffix)
+                end
+                for p in patterns
+                    let files = glob(expand('%:p:h').'/*'. p)
+                    if files != ''
+                        let files_l = split(files, '\n')
+                        call filter(files_l, '!isdirectory(v:val) && v:val != expand("%:p")')
+                        if !empty(files_l)
+                            for w in files_l
+                                let ww = fnamemodify(w, ":t:r")
+                                if !has_key(b:vikiHyperWordTable, ww) && 
+                                            \ (simpleWikiName == '' || ww !~# simpleWikiName)
+                                    let b:vikiHyperWordTable[ww] = w
+                                endif
+                            endfor
+                        endif
+                    endif
+                endfor
+            endif
+            for f in g:vikiHyperWordsFiles
+                if f =~ '^\./'
+                    let f = expand('%:p:h'). f[1:-1]
+                endif
+                if filereadable(f)
+                    let hyperWords = readfile(f)
+                    for wl in hyperWords
+                        if wl =~ '^\s*%'
+                            continue
+                        endif
+                        let ml = matchlist(wl, '^\(\S\+\) *\t\s*\(.\+\)$')
+                        if !empty(ml)
+                            if !has_key(b:vikiHyperWordTable, ml[1])
+                                let b:vikiHyperWordTable[ml[1]] = ml[2]
+                            endif
+                        endif
+                    endfor
+                endif
+            endfor
+            let hyperWords = keys(b:vikiHyperWordTable)
+            if !empty(hyperWords)
+                let simpleHyperWords = join(map(hyperWords, '"\\<".v:val."\\>"'), '\|') .'\|'
+            endif
+        endif
         let b:vikiSimpleNameRx = '\C\(\('. interviki .'\)\?'.
-                    \ '\('. quotedVikiName . simpleWikiName .'\)\)'.
+                    \ '\('. simpleHyperWords . quotedVikiName . simpleWikiName .'\)\)'.
                     \ '\(#\('. b:vikiAnchorNameRx .'\)\>\)\?'
         let b:vikiSimpleNameSimpleRx = '\C\(\<['.b:vikiUpperCharacters.']\+::\)\?'.
-                    \ '\('. quotedVikiName . simpleWikiName .'\)'.
+                    \ '\('. simpleHyperWords . quotedVikiName . simpleWikiName .'\)'.
                     \ '\(#'. b:vikiAnchorNameRx .'\>\)\?'
         let b:vikiSimpleNameNameIdx   = 1
         let b:vikiSimpleNameDestIdx   = 0
@@ -811,6 +915,18 @@ fun! VikiSetupBuffer(state, ...) "{{{3
     endif
 
     let b:vikiInexistentHighlight = "vikiInexistentLink"
+
+    if a:state == 2
+        if g:vikiAutoMarks
+            call VikiSetAnchorMarks()
+        endif
+        if g:vikiNameSuffix != ''
+            exec 'setlocal suffixesadd+='. g:vikiNameSuffix
+        endif
+        if exists('b:vikiNameSuffix') && b:vikiNameSuffix != '' && b:vikiNameSuffix != g:vikiNameSuffix
+            exec 'setlocal suffixesadd+='. b:vikiNameSuffix
+        endif
+    endif
 endf
 
 fun! VikiDefineMarkup(state) "{{{3
@@ -829,6 +945,8 @@ fun! VikiGetSimpleRx4SimpleWikiName() "{{{3
     let upper = <SID>UpperCharacters()
     let lower = <SID>LowerCharacters()
     let simpleWikiName = '\<['.upper.']['.lower.']\+\(['.upper.']['.lower.'0-9]\+\)\+\>'
+    " This will mistakenly highlight words like LaTeX
+    " let simpleWikiName = '\<['.upper.']['.lower.']\+\(['.upper.']['.lower.'0-9]\+\)\+'
     return simpleWikiName
 endf
 
@@ -1053,6 +1171,7 @@ fun! VikiMapKeys(state) "{{{3
         " && !hasmapto(":VikiFind")
         exec 'nnoremap <buffer> <silent> '. g:vikiMapLeader .'n :VikiFindNext<cr>'
         exec 'nnoremap <buffer> <silent> '. g:vikiMapLeader .'N :VikiFindPrev<cr>'
+        exec 'nmap <buffer> <silent> '. g:vikiMapLeader .'F '. g:vikiMapLeader .'n'. g:vikiMapLeader .'f'
     endif
     if mf =~# 'tF'
         " && !hasmapto(":VikiFind")
@@ -1104,7 +1223,7 @@ command! VikiMinorModeMaybe echom "Deprecated command: VikiMinorModeMaybe" | cal
 command! -range VikiQuote :call VEnclose("[-", "-]", "[-", "-]")
 
 fun! VikiMode(state) "{{{3
-    if exists("b:vikiEnabled")
+    if exists('b:vikiEnabled')
         if b:vikiEnabled
             return 0
         endif
@@ -1295,6 +1414,17 @@ if !exists('*VikiAnchor_vim') "{{{2
     endf
 endif
 
+fun! <SID>GetAnchorRx(anchor)
+    let anchorRx = '\^\s\*\('. b:vikiCommentStart .'\)\?\s\*'. b:vikiAnchorMarker . a:anchor
+    if exists('b:vikiAnchorRx')
+        " !!! b:vikiAnchorRx must be a very nomagic (\V) regexp 
+        "     expression
+        let varx = VikiSubstituteArgs(b:vikiAnchorRx, 'ANCHOR', a:anchor)
+        let anchorRx = '\('.anchorRx.'\|'. varx .'\)'
+    endif
+    return '\V'. anchorRx
+endf
+
 fun! VikiFindAnchor(anchor) "{{{3
     if a:anchor == g:vikiDefNil || a:anchor == ''
         return
@@ -1306,15 +1436,9 @@ fun! VikiFindAnchor(anchor) "{{{3
     else
         let co = col('.')
         let li = line('.')
-        let anchorRx = '\^\s\*\('. b:vikiCommentStart .'\)\?\s\*'. b:vikiAnchorMarker . a:anchor
-        if exists('b:vikiAnchorRx')
-            " !!! b:vikiAnchorRx must be a very nomagic (\V) regexp 
-            "     expression
-            let varx = VikiSubstituteArgs(b:vikiAnchorRx, 'ANCHOR', a:anchor)
-            let anchorRx = '\('.anchorRx.'\|'. varx .'\)'
-        endif
+        let anchorRx = <SID>GetAnchorRx(a:anchor)
         keepjumps norm! $
-        let found = search('\V'. anchorRx, 'w')
+        let found = search(anchorRx, 'w')
         if !found
             call cursor(li, co)
             if g:vikiFreeMarker
@@ -1322,6 +1446,22 @@ fun! VikiFindAnchor(anchor) "{{{3
             endif
         endif
     endif
+endf
+
+fun! VikiSetAnchorMarks() "{{{3
+    let co = col('.')
+    let li = line('.')
+    let anchorRx = <SID>GetAnchorRx('m\(\[a-zA-Z0-9]\)\s\*\$')
+    " echom 'DBG VikiSetAnchorMarks: '. anchorRx
+    keepjumps norm! G$
+    keepjumps let found = search(anchorRx, 'w')
+    while found
+        let m = substitute(getline('.'), anchorRx, '\2', '')
+        " echom 'DBG VikiSetAnchorMarks: '. getline('.') .' -> norm! m'. m
+        exec 'norm! m'. m
+        let found = search(anchorRx, 'W')
+    endw
+    call cursor(li, co)
 endf
 
 fun! VikiGetWinNr(...) "{{{3
@@ -1488,8 +1628,20 @@ endf
 fun! <SID>VikiFollowLink(def, ...) "{{{3
     let winNr = a:0 >= 1 ? a:1 : 0
     exec VikiSplitDef(a:def)
-    if winNr == 0 && exists('v_winnr')
-        let winNr = v_winnr
+    if winNr == 0
+        if exists('v_winnr')
+            let winNr = v_winnr
+        elseif exists('b:vikiOpenInWindow')
+            if b:vikiOpenInWindow =~ '^l\(a\(s\(t\)\?\)\?\)\?'
+                let winNr = <SID>HowManyWindows()
+            elseif b:vikiOpenInWindow =~ '^[+-]\?\d\+$'
+                if b:vikiOpenInWindow[0] =~ '[+-]'
+                    exec 'let winNr = '. bufwinnr("%") . b:vikiOpenInWindow
+                else
+                    let winNr = b:vikiOpenInWindow
+                endif
+            endif
+        endif
     endif
     let inter = <SID>GuessInterViki(a:def)
     let bn    = bufnr('%')
@@ -1536,8 +1688,8 @@ fun! <SID>GuessInterViki(def) "{{{3
     else
         return ''
     endif
-    if exp =~# s:InterVikiRx
-        return substitute(exp, s:InterVikiRx, '\1', '')
+    if <SID>IsInterViki(exp)
+        return <SID>InterVikiName(exp)
     else
         return ''
     endif
@@ -1562,6 +1714,7 @@ fun! VikiMakeDef(v_name, v_dest, v_anchor, v_part, v_type) "{{{3
         let arr = MvAddElement(arr, g:vikiDefSep, <SID>MakeVikiDefPart(a:v_anchor))
         let arr = MvAddElement(arr, g:vikiDefSep, <SID>MakeVikiDefPart(a:v_part))
         let arr = MvAddElement(arr, g:vikiDefSep, <SID>MakeVikiDefPart(a:v_type))
+        " echom "DBG ". arr
         return arr
     endif
 endf
@@ -1600,6 +1753,7 @@ fun! <SID>GetVikiNamePart(txt, erx, idx, errorMsg) "{{{3
 endf
 
 fun! VikiLinkDefinition(txt, col, compound, ignoreSyntax, type) "{{{3
+    " echom "DBG VikiLinkDefinition: ". a:txt ." ". a:compound
     exe a:compound
     if erx != ""
         let ebeg = -1
@@ -1655,7 +1809,11 @@ fun! VikiExpandSimpleName(dest, name, suffix) "{{{3
     if a:name == ''
         return a:dest
     else
-        let dest = a:dest . g:vikiDirSeparator . a:name
+        if a:dest == ''
+            let dest = a:name
+        else
+            let dest = a:dest . g:vikiDirSeparator . a:name
+        endif
         if a:suffix == g:vikiDefSep
             return <SID>WithSuffix(dest)
         elseif isdirectory(dest)
@@ -1666,7 +1824,84 @@ fun! VikiExpandSimpleName(dest, name, suffix) "{{{3
     endif
 endf
 
+fun! <SID>IsInterViki(vikiname)
+    return  <SID>IsSupportedType('i') && a:vikiname =~# s:InterVikiRx
+endf
+
+fun! <SID>InterVikiName(vikiname)
+    return substitute(a:vikiname, s:InterVikiRx, '\1', '')
+endf
+
+fun! <SID>InterVikiPart(vikiname)
+    return substitute(a:vikiname, s:InterVikiRx, '\2', '')
+endf
+
+fun! <SID>InterVikiDef(vikiname, ...)
+    let ow = a:0 >= 1 ? a:1 : <SID>InterVikiName(a:vikiname)
+    let vd = <SID>VikiLetVar('i_dest', 'vikiInter'.ow)
+    if vd != ''
+        exec vd
+        if i_dest =~ '^\*\S\+('
+            let it = 'fn'
+        elseif i_dest[0] =~ '%'
+            let it = 'fmt'
+        else
+            let it = 'prefix'
+        endif
+        return vd .'|let i_type="'. it .'"|let i_name="'. ow .'"'
+    end
+    return vd
+endf
+
+fun! <SID>InterVikiDest(vikiname, ...)
+    if a:0 >= 1  && a:1 != ''
+        let ow = a:1
+        let v_dest = a:vikiname
+    else
+        let ow = <SID>InterVikiName(a:vikiname)
+        let v_dest = <SID>InterVikiPart(a:vikiname)
+    endif
+    let vd = <SID>InterVikiDef(a:vikiname, ow)
+    if vd != ''
+        exec vd
+        if i_type == 'fn'
+            let f = strpart(i_dest, 1)
+            exec 'let v_dest = '. <SID>sprintf1(f, v_dest)
+        elseif i_type == 'fmt'
+            let f = strpart(i_dest, 1)
+            let v_dest = <SID>sprintf1(f, v_dest)
+        else
+            let v_dest = expand(i_dest) . g:vikiDirSeparator . v_dest
+        endif
+        return v_dest
+    else
+        echoerr "Viki: InterViki is not defined: ". ow
+        return g:vikiDefNil
+    endif
+endf
+
+fun! <SID>InterVikiSuffix(vikiname)
+    let ow = <SID>InterVikiName(a:vikiname)
+    let vd = <SID>InterVikiDef(a:vikiname, ow)
+    if vd != ''
+        exec vd
+        if i_type =~ 'fn'
+            return ''
+        else
+            if fnamemodify(a:vikiname, ':e') != ''
+                let useSuffix = ''
+            else
+                exec <SID>VikiLetVar('useSuffix', 'vikiInter'.ow.'_suffix')
+            endif
+            return useSuffix
+        endif
+    else
+        return ''
+    endif
+endf
+
 fun! VikiCompleteSimpleNameDef(def) "{{{3
+    " echom "DBG VikiCompleteSimpleNameDef: ". a:def
     exec VikiSplitDef(a:def)
     if v_name == g:vikiDefNil
         throw "Viki: Malformed simple viki name (no name): ".a:def
@@ -1675,25 +1910,23 @@ fun! VikiCompleteSimpleNameDef(def) "{{{3
     if !(v_dest == g:vikiDefNil)
         throw "Viki: Malformed simple viki name (destination=".v_dest."): ". a:def
     endif
-    
-    let useSuffix = g:vikiDefSep
-    if <SID>IsSupportedType("i") && v_name =~# s:InterVikiRx
-        let ow = substitute(v_name, s:InterVikiRx, '\1', "")
-        let vd = <SID>VikiLetVar("v_dest", "vikiInter".ow)
-        if vd != ''
-            exec vd
-            let v_dest = expand(v_dest)
-            let v_name = substitute(v_name, s:InterVikiRx, '\2', "")
-            exec <SID>VikiLetVar("useSuffix", "vikiInter".ow."_suffix")
-        else
-            " throw "Viki: InterViki is not defined: ".ow
-            echoerr "Viki: InterViki is not defined: ".ow
-        endif
-    else
-        let v_dest = expand("%:p:h")
-    endif
 
+    if <SID>IsInterViki(v_name)
+        let i_name = <SID>InterVikiName(v_name)
+        let useSuffix = <SID>InterVikiSuffix(v_name)
+        let v_name = <SID>InterVikiPart(v_name)
+    elseif exists('b:vikiHyperWordTable') && has_key(b:vikiHyperWordTable, v_name)
+        let i_name = ''
+        let useSuffix = ''
+        let v_name = b:vikiHyperWordTable[v_name]
+    else
+        let i_name = ''
+        let v_dest = expand("%:p:h")
+        let useSuffix = g:vikiDefSep
+    endif
+    
     if <SID>IsSupportedType("S")
+        " echom "DBG: ". v_name
         if v_name =~ b:vikiQuotedSelfRef
             let v_name  = g:vikiSelfRef
         elseif v_name =~ b:vikiQuotedRef
@@ -1702,12 +1935,18 @@ fun! VikiCompleteSimpleNameDef(def) "{{{3
     elseif !<SID>IsSupportedType("c")
         throw "Viki: CamelCase names not allowed"
     endif
-    
+
     if v_name != g:vikiSelfRef
         let rdest = VikiExpandSimpleName(v_dest, v_name, useSuffix)
     else
         let rdest = g:vikiDefNil
     endif
+
+    if i_name != ''
+        let rdest = <SID>InterVikiDest(rdest, i_name)
+        " let v_name = ''
+    endif
+
     let v_type   = v_type == g:vikiDefNil ? 's' : v_type
     return VikiMakeDef(v_name, rdest, v_anchor, v_part, v_type)
 endf
@@ -1729,20 +1968,11 @@ fun! VikiCompleteExtendedNameDef(def) "{{{3
         else
             let v_dest = g:vikiSelfRef
         endif
-    elseif <SID>IsSupportedType("i") && v_dest =~? '^['. <SID>UpperCharacters() .']\+::' " an Interviki name
-        let ow = substitute(v_dest, s:InterVikiRx, '\1', "")
-        exec <SID>VikiLetVar("idest", "vikiInter".ow)
-        if exists("idest")
-            let idest  = fnamemodify(idest, ':p')
-            let v_dest = substitute(v_dest, s:InterVikiRx, '\2', "")
-            exec <SID>VikiLetVar("useSuffix", "vikiInter".ow."_suffix")
-            if v_dest =~ '\V.\?'. escape(useSuffix, '\') .'\$'
-                let useSuffix = ''
-            endif
-            let v_dest = VikiExpandSimpleName(idest, v_dest, useSuffix)
-        else
-            " throw "Viki: InterViki is not defined: ".ow
-            echom "Viki: InterViki is not defined: ".ow
+    elseif <SID>IsInterViki(v_dest)
+        let useSuffix = <SID>InterVikiSuffix(v_dest)
+        let v_dest = <SID>InterVikiDest(v_dest)
+        if v_dest != g:vikiDefNil
+            let v_dest = VikiExpandSimpleName('', v_dest, useSuffix)
         endif
     else
         if v_dest =~? '^[a-z]:'                      " an absolute dos path
@@ -1756,7 +1986,6 @@ fun! VikiCompleteExtendedNameDef(def) "{{{3
             let v_dest = expand("%:p:h") .g:vikiDirSeparator. v_dest
             let v_dest = <SID>CanonicFilename(v_dest)
         endif
-        " if v_dest != '' && v_dest != g:vikiSelfRef && fnamemodify(v_dest, ":p:h") == expand("%:p:h")
         if v_dest != '' && v_dest != g:vikiSelfRef && !VikiIsSpecial(v_dest)
             let mod = <SID>ExtendedModifier(v_part)
             if fnamemodify(v_dest, ':e') == '' && mod !~# '!'
@@ -1772,6 +2001,7 @@ fun! VikiCompleteExtendedNameDef(def) "{{{3
 endf
  
 fun! <SID>FindFileWithSuffix(filename, suffixes) "{{{3
+    " echom "DBG FindFileWithSuffix: filename=". a:filename ." ". a:suffixes
     if filereadable(a:filename)
         return a:filename
     else
@@ -1795,11 +2025,13 @@ endf
 
 fun! VikiCompleteCmdDef(def) "{{{3
     exec VikiSplitDef(a:def)
+    " echom "DBG VikiCompleteCmdDef: v_name=". v_name ." v_dest=". v_dest
     let args     = v_anchor
     let v_anchor = g:vikiDefNil
     if v_name ==# "#IMG" || v_name =~# "{img"
         let vikiSpecialFiles = <SID>GetSpecialFilesSuffixes()
         let v_dest = <SID>FindFileWithSuffix(v_dest, vikiSpecialFiles)
+        " echom "DBG VikiCompleteCmdDef#IMG: v_dest=". v_dest
     elseif v_name ==# "#Img"
         let id = matchstr(args, '\sid=\zs\w\+')
         if id != ""
@@ -1815,7 +2047,9 @@ fun! VikiCompleteCmdDef(def) "{{{3
         " let v_anchor = g:vikiDefNil
     endif
     let v_type = v_type == g:vikiDefNil ? 'cmd' : v_type
-    return VikiMakeDef(v_name, v_dest, v_anchor, v_part, v_type)
+    let vdef   = VikiMakeDef(v_name, v_dest, v_anchor, v_part, v_type)
+    " echom "DBG VikiCompleteCmdDef: ". vdef
+    return vdef
 endf
 
 fun! <SID>VikiLinkNotFoundEtc(oldmap, ignoreSyntax) "{{{3
@@ -1859,12 +2093,14 @@ fun! VikiGetLink(oldmap, ignoreSyntax, ...) "{{{3
         let txt = getline('.')
         let col = col('.') - 1
     endif
+    " echom "DBG VikiGetLink: ". tryAll ." ". vikiType
     if (tryAll || vikiType == 1) && <SID>IsSupportedType('s', types)
         if exists('b:getVikiLink')
             exe 'let def = ' . b:getVikiLink.'()'
         else
             let def = VikiLinkDefinition(txt, col, b:vikiSimpleNameCompound, a:ignoreSyntax, 's')
         endif
+        " echom "DBG VikiGetLink1: ". def
         if def != ''
             return VikiDispatchOnFamily('VikiCompleteSimpleNameDef', '', def)
         endif
@@ -1919,7 +2155,8 @@ fun! VikiEdit(name, ...) "{{{3
     let bang  = a:0 >= 1 ? a:1 : ''
     let winNr = a:0 >= 2 ? a:2 : 0
     if exists('b:vikiEnabled') && bang != '' && 
-                \ (!exists('b:vikiFamily') || b:vikiFamily != '')
+                \ exists('b:vikiFamily') && b:vikiFamily != ''
+                " \ (!exists('b:vikiFamily') || b:vikiFamily != '')
         if g:vikiHomePage != ''
             call VikiOpenLink(g:vikiHomePage, '', '', '', winNr)
         else
@@ -1970,17 +2207,24 @@ fun! <SID>VikiEditCompleteAgent(interviki, afname, fname) "{{{3
 endf
 
 fun! VikiEditComplete(ArgLead, CmdLine, CursorPos) "{{{3
-    let i = matchstr(a:ArgLead, '^\zs.\{-}\ze::')
+    " let i = matchstr(a:ArgLead, '^\zs.\{-}\ze::')
+    let i = <SID>InterVikiName(a:ArgLead)
     if exists('g:vikiInter'. i .'_suffix')
         let sfx = g:vikiInter{i}_suffix
     else
         let sfx = <SID>VikiGetSuffix()
     endif
     if i != '' && exists('g:vikiInter'. i)
-        let d  = substitute(g:vikiInter{i}, '\', '/', 'g')
+        " let d  = substitute(g:vikiInter{i}, '\', '/', 'g')
+        " let f  = matchstr(a:ArgLead, '::\(\[-\)\?\zs.*$')
+        " let rv = glob(d .'/'. f .'*'.sfx)
         let f  = matchstr(a:ArgLead, '::\(\[-\)\?\zs.*$')
-        let rv = glob(d .'/'. f .'*'.sfx)
-        let rv = substitute(rv."\n", '\V\('.escape(d, '\').'/\(\[^\n]\{-}\)\)'.sfx.'\ze\n', "\\=<SID>VikiEditCompleteAgent('".i."', submatch(1), submatch(2))", 'g')
+        let d  = <SID>InterVikiDest(f.'*'.sfx, i)
+        let d  = substitute(d, '\', '/', 'g')
+        let rv = glob(d)
+        let rp = '\V'. substitute(d, '*', '\\(\\.\\{-}\\)', '')
+        " let rv = substitute(rv."\n", '\V\('.escape(d, '\').'/\(\[^\n]\{-}\)\)'.sfx.'\ze\n', "\\=<SID>VikiEditCompleteAgent('".i."', submatch(1), submatch(2))", 'g')
+        let rv = substitute(rv."\n", rp, i .'::\1', 'g')
     else
         let rv = glob('*'.sfx)
         let rv = substitute(rv."\n", '\V\n\?\zs\(\[^\n]\{-}\)\ze\n', "\\=<SID>VikiEditCompleteAgent('".i."', submatch(1), submatch(1))", 'g')
@@ -2014,6 +2258,13 @@ command! -nargs=1 -bang -complete=custom,VikiEditComplete VikiEditInWin4 :call V
 
 command! VikiHome :call VikiEdit('*', '!')
 command! VIKI :call VikiEdit('*', '!')
+
+augroup viki
+    au!
+    autocmd BufEnter * call VikiMinorModeReset()
+    autocmd BufEnter * call VikiCheckInexistent()
+    autocmd VimLeavePre * let g:vikiEnabled = 0
+augroup END
 
 finish "{{{1
 _____________________________________________________________________________________
@@ -2262,5 +2513,39 @@ as inexistent
 - FIX: Syntax highlighting of regions or commands the headline of which 
 spanned several lines
 - Added ppt to g:vikiSpecialFiles.
+
+1.13
+- Intervikis can now be defined as function ('*Function("%s")', this 
+breaks conversion via deplate) or format string ('%/foo/%s/bar', not yet 
+supported by deplate)
+- Task lists take optional tags, eg #A [tag] foo; they may also be 
+tagged with the letters G-Z, which are highlighted as general task (not 
+supported by deplate)
+- Automatically set marks for labels prefixed with "m" (eg #ma -> 'a, 
+#mB -> 'B)
+- Two new g:vikiNameTypes: w = (Hyper)Words, f = File names in cwd as 
+hyperwords (experimental, not implemented in deplate)
+- In extended viki names: add the suffix only if the destination hasn't 
+got one
+- A buffer local b:vikiOpenInWindow allows links to be redirected to a 
+certain window (ie, if b:vikiOpenInWindow = 2, pressing <c-cr> behaves 
+like <LocalLeader>v2); this is useful if you use some kind of 
+directory/catalog metafile; possible values: absolute number, +/- 
+relative number, "last"
+- Switched back to old regexp for simple names in order to avoid 
+highlighting of names like LaTeX
+- VikiEdit opens the homepage only if b:vikiFamily is set
+- Map <LocalLeader>vF to <LocalLeader>vn<LocalLeader>vf
+- Improved syntax for (nested) macros
+- Set &suffixesadd so that you can use vim's own gf in some situations
+- SYNTAX: Allow empty lines as region delimiters (deplate 0.8.1)
+- FIX: simple viki names with anchors where not recognised
+- FIX: don't mark simple (inter)viki names as inexistent that expand to 
+links matching g:vikiSpecialProtocols
+- FIX: file names containing %
+- FIX: added a patch (VikiMarkInexistentInElement) by Kevin Kleinfelter 
+for compatibility with an unpatched vim70 (untested)
+- FIX: disabling simple names (s) also properly disables the name types: 
+Scwf
 
 " vim: ff=unix

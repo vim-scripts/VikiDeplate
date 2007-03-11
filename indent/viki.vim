@@ -3,8 +3,8 @@
 " @Website:     http://members.a1.net/t.link/
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     16-Jän-2004.
-" @Last Change: 17-Sep-2006.
-" @Revision: 0.228
+" @Last Change: 2007-01-05.
+" @Revision: 0.235
 
 if !g:vikiEnabled
     finish
@@ -24,135 +24,136 @@ setlocal indentkeys=0=#\ ,0=?\ ,0=<*>\ ,0=-\ ,0=+\ ,0=@\ ,=::\ ,!^F,o,O,e
 " setlocal indentkeys=0=#<space>,0=?<space>,0=<*><space>,0=-<space>,=::<space>,!^F,o,O,e
 
 " Only define the function once.
-if exists("*VikiGetIndent")
-    finish
-endif
+if !exists("*VikiGetIndent")
 
-fun! VikiGetIndent()
-    let lr = &lazyredraw
-    set lazyredraw
-    try
-        " Find a non-blank line above the current line.
-        let lnum = prevnonblank(v:lnum - 1)
+    fun! VikiGetIndent()
+        let lr = &lazyredraw
+        set lazyredraw
+        try
+            " Find a non-blank line above the current line.
+            let lnum = prevnonblank(v:lnum - 1)
 
-        " At the start of the file use zero indent.
-        if lnum == 0
-            return 0
-        endif
-
-        let ind  = indent(lnum)
-        if ind == 0
-            return 0
-        end
-
-        let line = getline(lnum)      " last line
-        
-        let cnum  = v:lnum
-        let cind  = indent(cnum)
-        let cline = getline(cnum)
-        
-        " Do not change indentation in regions
-        if VikiIsInRegion(cnum)
-            return cind
-        endif
-        
-        let cHeading = matchend(cline, '^\*\+\s\+')
-        if cHeading >= 0
-            return 0
-        endif
-            
-        let pnum   = v:lnum - 1
-        let pind   = indent(pnum)
-        
-        let pline  = getline(pnum) " last line
-        let plCont = matchend(pline, '\\$')
-        
-        if plCont >= 0
-            let plHeading = matchend(pline, '^\*\+\s\+')
-            " if plHeading >= 0
-            "     " echo "DBG continuation plHeading=". plHeading
-            "     return plHeading
-            " else
-            "     " echo "DBG continuation pind=". pind
-                return pind
-            " endif
-        end
-        
-        if cind > 0
-            " Do not change indentation of:
-            "   - commented lines
-            "   - headings
-            if cline =~ '^\(\s*%\|\*\)'
-                " echom "DBG comment or heading: ". cline
-                return ind
+            " At the start of the file use zero indent.
+            if lnum == 0
+                return 0
             endif
 
-            let markRx = '^\s\+\([#?!+]\)\1\{2,2}\s\+'
-            let listRx = '^\s\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\s\+'
-            let priRx  = '^\s\+#[A-F]\d\? \+\([x_0-9%-]\+ \+\)\?'
-            let descRx = '^\s\+.\{-1,}\s::\s\+'
+            let ind  = indent(lnum)
+            if ind == 0
+                return 0
+            end
+
+            let line = getline(lnum)      " last line
             
-            let clMark = matchend(cline, markRx)
-            let clList = matchend(cline, listRx)
-            let clPri  = matchend(cline, priRx)
-            let clDesc = matchend(cline, descRx)
-            " let cln    = clList >= 0 ? clList : clDesc
-
-            if clList >= 0 || clDesc >= 0 || clMark >= 0 || clPri >= 0
-                let spaceEnd = matchend(cline, '^\s\+')
-                let rv = (spaceEnd / &sw) * &sw
-                " echom "DBG clList=". clList ." clDesc=". clDesc
-                return rv
-            else
-                let plMark = matchend(pline, markRx)
-                if plMark >= 0
-                    return plMark
-                endif
+            let cnum  = v:lnum
+            let cind  = indent(cnum)
+            let cline = getline(cnum)
+            
+            " Do not change indentation in regions
+            if VikiIsInRegion(cnum)
+                return cind
+            endif
+            
+            let cHeading = matchend(cline, '^\*\+\s\+')
+            if cHeading >= 0
+                return 0
+            endif
                 
-                let plList = matchend(pline, listRx)
-                if plList >= 0
-                    " echom "DBG plList ". plList ." ". pline
-                    return plList
+            let pnum   = v:lnum - 1
+            let pind   = indent(pnum)
+            
+            let pline  = getline(pnum) " last line
+            let plCont = matchend(pline, '\\$')
+            
+            if plCont >= 0
+                " let plHeading = matchend(pline, '^\*\+\s\+')
+                " if plHeading >= 0
+                "     " echo "DBG continuation plHeading=". plHeading
+                "     return plHeading
+                " else
+                "     " echo "DBG continuation pind=". pind
+                "     return pind
+                " endif
+                return cind
+            end
+            
+            if cind > 0
+                " Do not change indentation of:
+                "   - commented lines
+                "   - headings
+                if cline =~ '^\(\s*%\|\*\)'
+                    " echom "DBG comment or heading: ". cline
+                    return ind
                 endif
 
-                let plPri = matchend(pline, priRx)
-                " echom "DBG plPri=". plPri
-                if plPri >= 0
-                    let rv = indent(pnum) + &sw / 2
-                    " return plPri
+                let markRx = '^\s\+\([#?!+]\)\1\{2,2}\s\+'
+                let listRx = '^\s\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\s\+'
+                let priRx  = '^\s\+#[A-F]\d\? \+\([x_0-9%-]\+ \+\)\?'
+                let descRx = '^\s\+.\{-1,}\s::\s\+'
+                
+                let clMark = matchend(cline, markRx)
+                let clList = matchend(cline, listRx)
+                let clPri  = matchend(cline, priRx)
+                let clDesc = matchend(cline, descRx)
+                " let cln    = clList >= 0 ? clList : clDesc
+
+                if clList >= 0 || clDesc >= 0 || clMark >= 0 || clPri >= 0
+                    let spaceEnd = matchend(cline, '^\s\+')
+                    let rv = (spaceEnd / &sw) * &sw
+                    " echom "DBG clList=". clList ." clDesc=". clDesc
                     return rv
-                endif
+                else
+                    let plMark = matchend(pline, markRx)
+                    if plMark >= 0
+                        return plMark
+                    endif
+                    
+                    let plList = matchend(pline, listRx)
+                    if plList >= 0
+                        " echom "DBG plList ". plList ." ". pline
+                        return plList
+                    endif
 
-                let plDesc = matchend(pline, descRx)
-                if plDesc >= 0
-                    " echom "DBG plDesc ". pind + (&sw / 2)
-                    if plDesc >= 0 && g:vikiIndentDesc == '::'
-                        return plDesc
-                    else
-                        return pind + (&sw / 2)
+                    let plPri = matchend(pline, priRx)
+                    " echom "DBG plPri=". plPri
+                    if plPri >= 0
+                        let rv = indent(pnum) + &sw / 2
+                        " return plPri
+                        return rv
+                    endif
+
+                    let plDesc = matchend(pline, descRx)
+                    if plDesc >= 0
+                        " echom "DBG plDesc ". pind + (&sw / 2)
+                        if plDesc >= 0 && g:vikiIndentDesc == '::'
+                            return plDesc
+                        else
+                            return pind + (&sw / 2)
+                        endif
+                    endif
+
+                    if cind < ind
+                        let rv = (cind / &sw) * &sw
+                        " echom "DBG cind < ind ". rv
+                        return rv
+                    elseif cind >= ind
+                        if cind % &sw == 0
+                            " echom "DBG cind % &sw ". cind
+                            return cind
+                        else
+                            " echom "DBG cind >= ind ". ind
+                            return ind
+                        end
                     endif
                 endif
-
-                if cind < ind
-                    let rv = (cind / &sw) * &sw
-                    " echom "DBG cind < ind ". rv
-                    return rv
-                elseif cind >= ind
-                    if cind % &sw == 0
-                        " echom "DBG cind % &sw ". cind
-                        return cind
-                    else
-                        " echom "DBG cind >= ind ". ind
-                        return ind
-                    end
-                endif
             endif
-        endif
 
-        " echom "DBG fallback"
-        return ind
-    finally
-        let &lazyredraw = lr
-    endtry
-endfun
+            " echom "DBG fallback"
+            return ind
+        finally
+            let &lazyredraw = lr
+        endtry
+    endf
+
+endif
 
