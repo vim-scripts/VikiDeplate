@@ -2,9 +2,9 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @Website:     http://members.a1.net/t.link/
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
-" @Created:     16-Jän-2004.
-" @Last Change: 2007-01-05.
-" @Revision: 0.235
+" @Created:     16-JÃ¤n-2004.
+" @Last Change: 2007-05-06.
+" @Revision: 0.236
 
 if !g:vikiEnabled
     finish
@@ -20,7 +20,7 @@ if !exists("g:vikiIndentDesc") | let g:vikiIndentDesc = 'sw' | endif "{{{2
 
 setlocal indentexpr=VikiGetIndent()
 setlocal indentkeys&
-setlocal indentkeys=0=#\ ,0=?\ ,0=<*>\ ,0=-\ ,0=+\ ,0=@\ ,=::\ ,!^F,o,O,e
+setlocal indentkeys=0=#\ ,0=?\ ,0=<*>\ ,0=-\ ,0=+\ ,0=@\ ,=\ ::\ ,!^F,o,O,e
 " setlocal indentkeys=0=#<space>,0=?<space>,0=<*><space>,0=-<space>,=::<space>,!^F,o,O,e
 
 " Only define the function once.

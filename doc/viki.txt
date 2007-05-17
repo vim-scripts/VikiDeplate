@@ -74,17 +74,17 @@ Extract viki.zip to your local vimfiles directory (see also
 
     (Linux etc.) $HOME/.vim/
     (Windows) $VIM/vimfiles/
-        compiler/  doc/  etc/ ftplugin/  plugin/  syntax/
+        autoload/ compiler/  doc/  etc/ ftplugin/  plugin/  syntax/
 
 These directories are used for installing user-specific plugins. It's possible 
 that these directories already exist and are populated with other plugins -- 
 in which case you probably already knew this. ;-)
 
-Uninstalling viki requires deleting the files from the viki archive by hand. 
-Alternatively, you can feed the file etc/Viki.lst to rm: >
-    
-    cd $HOME/.vim/
-    rm -i `cat etc/Viki.lst`
+Viki requires: >
+
+    :set nocompatible
+    :filetype plugin indent on
+    :syntax on
 
 Viki will be automatically loaded when starting vim. In case you have vim 
 already running and don't want to restart it, you can also type: >
@@ -103,6 +103,9 @@ Viki doesn't set the viki filetype for you. How you set the filetype is up to
 you to decide. Basically, there are two possibilities: based on a suffix or 
 based on the location. See below for examples.
 
+Uninstalling: there is an experimental script .vim/etc/uninstall_Viki.sh that 
+should do the  trick.
+
 
 Customization:                                      *viki-customization*
 It's probably a good idea to check the values of the following variables:
@@ -114,8 +117,8 @@ It's probably a good idea to check the values of the following variables:
       languages you probably prefer to use quoted viki names anyway): >
         
         " this is in iso-latin-1
-        let g:vikiLowerCharacters = "a-z‰ˆ¸ﬂ·‡ÈËÌÏÛÚÁÒ"
-        let g:vikiUpperCharacters = "A-Zƒ÷‹"
+        let g:vikiLowerCharacters = "a-z√§√∂√º√ü√°√†√©√®√≠√¨√≥√≤√ß√±"
+        let g:vikiUpperCharacters = "A-Z√Ñ√ñ√ú"
 <
     - |g:vikiUseParentSuffix| (see also |viki-names|); I personally prefer 
       this to be ON >
@@ -199,8 +202,8 @@ You can also use |:autocmd| to set the filetype depending on the path: >
 
 If the variables b:getVikiLink or b:getExtVikiLink exist, their values are 
 used as _function_ names for returning the current viki name's definition. A 
-viki definition is a "multvalue" (see multvals.vim, vimscript #171) of the 
-three elements name, destination, anchor with g:vikiDefSep as the separator.
+viki definition is an array of the three elements name, destination, anchor 
+with g:vikiDefSep as the separator.
 
 If the variables b:editVikiPage or b:createVikiPage exist, their values are 
 interpreted as _command_ names for editing readable or creating new wiki 
@@ -220,11 +223,6 @@ and set it to whatever you want.
 
 ===============================================================================
                                                     *viki-requirements*
-Requirements~
-
-- multvals.vim (vimscript #171, >= 3.8.0)
-
-
 Optional Enhancements~
 
 - genutils.vim (vimscript #197 for saving back references; but see 
@@ -331,7 +329,9 @@ A viki name is either:
         hyperwords out of the filenames in the current buffer's directory.  
         I.e. if |vikiNameSuffix| is '.txt' and there is a file 'example.txt' 
         in the same directory as the current buffer's file, then each 
-        occurrence of the word 'example' will be turned into a clickable link.
+        occurrence of the word 'example' will be turned into a clickable link. 
+        You can prevent a file name from being highlighted as hyperword by 
+        defining an entry in the vikiWords file with "-" as destination.
 
 Adding #[a-z0-9]\+ to the wiki name denotes a reference to a specific anchor.  
 Examples for wiki names referring to an anchor: >
@@ -591,6 +591,7 @@ a wiki syntax group -- if the second argument is 1 it tries to interpret the
 text under the cursor as a wiki name anyway.
 
 <LocalLeader>vf ... Open in window
+<LocalLeader>vt ... Open in a new tab
 <LocalLeader>vs ... Open in a new window
 <LocalLeader>vv ... Open in a new window but split vertically
     - see also |vikiSplit|
@@ -599,7 +600,9 @@ text under the cursor as a wiki name anyway.
 
 <LocalLeader>ve ... |:VikiEdit| edit a viki page
 
-<LocalLeader>vb ... |VikiGoBack()|
+<LocalLeader>vb <LocalLeader>v<left> ... |VikiGoBack()|
+<LocalLeader>v<bs> <LocalLeader>v<up> ... |VikiGoParent()|
+
 <LocalLeader>vq ... |:VikiQuote| mark selected text a quoted viki name
 
 <LocalLeader>vd ... |:VikiMarkInexistent| in the whole document
@@ -629,6 +632,8 @@ Commands~
 - VikiMode (do additional highlighting)
   Basically the same as: >
     set ft=viki
+< The main difference between these two is that VikiMode unlets 
+  b:did_ftplugin to make sure that the ftplugin gets loaded.
 
                                                     *:VikiFind*
                                                     *:VikiFindNext* *:VikiFindPrev*
@@ -695,14 +700,19 @@ Functions~
 
 - VikiFindAnchor(anchor)                            *VikiFindAnchor()*
 
+                                                    *b:vikiParent*
+- VikiGoParent()                                    *VikiGoParent()* 
+    If b:vikiParent is defined, open this viki name, otherwise use 
+    |VikiGoBack()|.
+
 - VikiGoBack()                                      *VikiGoBack()*
-  Viki keeps record about the "source" files from where a viki page was 
-  entered.  Calling this function jumps back to the "source" file (if only one 
-  such back reference is known) or let's you select from a list of "source" 
-  files. The information is stored in buffer variables -- i.e., it gets lost 
-  after closing the buffer. Care was taken to reduce information clutter, 
-  which is why the number of possible back references per "source" file was 
-  limited to one.
+    Viki keeps record about the "source" files from where a viki page was 
+    entered.  Calling this function jumps back to the "source" file (if only 
+    one such back reference is known) or let's you select from a list of 
+    "source" files. The information is stored in buffer variables -- i.e., it 
+    gets lost after closing the buffer. Care was taken to reduce information 
+    clutter, which is why the number of possible back references per "source" 
+    file was limited to one.
 
 - VikiOpenSpecialFile(filename)                     *VikiOpenSpecialFile()*
     Handles filenames that match |vikiSpecialFiles|.
@@ -964,6 +974,69 @@ The colors are tested using color scheme with a white background.
     - vikiUnderline
     - vikiTypewriter
     - vikiCommand
+
+
+================================================================================
+                                                    *viki-files*
+Files Region~
+
+Viki knows a special #Files region.
+
+Example: >
+    #Files glob=lib/** types=f <<
+    [[example1.rb]]     This is an example file
+    [[example2.rb]]     This is another example
+    [[lib/example1.rb]]
+    [[lib/example2.rb]]
+
+    #Files glob=*.txt types=f <<
+    [[example.txt]] The manual
+
+The filenames are stored as extended viki names. Each line can take a comment 
+that is restored upon automatic update.
+
+There are a few special commands to deal with this region.
+
+                                                    *:VikiFilesUpdate*
+:VikiFilesUpdate
+    - Update the current #Files region under the cursor.
+
+                                                    *:VikiFilesUpdateAll*
+:VikiFilesUpdateAll
+    - Update all #Files region in the current buffer.
+
+
+If in the following commands a "!" is added, the command works only on files 
+in the same directory or a subdirectory as the file on the current line.
+
+                                                    *:VikiFilesExec*
+:VikiFilesExec[!] FORMAT_STRING
+    - |:execute| a vim command after doing some replacements with the command 
+      string. For each formatted string the command is issued only once -- 
+      i.e. you can work easily with the directories. If no special formatting 
+      string is contained, the preformatted filename is appended to the command.
+        %{FILE}  ... filename
+        %{FFILE} ... preformatted filename (with '#%\ ' escaped)
+        %{DIR}   ... file's directory
+
+                                                    *:VikiFilesCmd*
+:VikiFilesCmd[!] VIKI_COMMAND_NAME
+    - |:execute| VikiCmd_{VIKI_COMMAND_NAME} FILENAME
+
+                                                    *:VikiFilesCall*
+:VikiFilesCall[!] FUNCTION_NAME
+    - |:call| VikiCmd_{FUNCTION_NAME}(FILENAME)
+
+
+Default Key Binding~
+<LocalLeader>vu ... :VikiFilesUpdate
+<LocalLeader>vU ... :VikiFilesUpdateAll
+<LocalLeader>vx ... :VikiFilesExec
+<LocalLeader>vX ... :VikiFilesExec!
+
+Example: >
+    Use ":VikiFilesExec! e" (<LocalLeader>vXe<cr>) to edit all the files in 
+    the same directory or a subdirectory of the current file under the cursor.
 
 
 ================================================================================

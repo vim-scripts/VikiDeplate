@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 2007-02-25.
-" @Revision: 0.673
+" @Last Change: 2007-05-11.
+" @Revision: 0.705
 
 if !g:vikiEnabled
     finish
@@ -27,15 +27,13 @@ let b:vikiEnabled = 2
 "     finish
 " endif
 
-syntax sync minlines=2
-" syntax sync maxlines=50
-" syntax sync match vikiParaBreak /^\s*$/
+syn match vikiSemiParagraph /^\s\+$/
 
 syn match vikiEscape /\\/ contained containedin=vikiEscapedChar
 syn match vikiEscapedChar /\\\_./ contains=vikiEscape,vikiChar
 
 " exe 'syn match vikiAnchor /^\('. escape(b:vikiCommentStart, '\/.*^$~[]') .'\)\?[[:blank:]]*#'. b:vikiAnchorNameRx .'/'
-exe 'syn match vikiAnchor /^[[:blank:]]*%\?[[:blank:]]*#'. b:vikiAnchorNameRx .'/'
+exe 'syn match vikiAnchor /^[[:blank:]]*%\?[[:blank:]]*#'. b:vikiAnchorNameRx .'.*/'
 " syn match vikiMarkers /\(\([#?!+]\)\2\{2,2}\)/
 syn match vikiMarkers /\V\(###\|???\|!!!\|+++\)/
 " syn match vikiSymbols /\(--\|!=\|==\+\|\~\~\+\|<-\+>\|<=\+>\|<\~\+>\|<-\+\|-\+>\|<=\+\|=\+>\|<\~\+\|\~\+>\|\.\.\.\)/
@@ -147,6 +145,20 @@ syn region vikiRegionAlt matchgroup=vikiMacroDelim
             \ end=/^[[:blank:]]*\z1\([[:blank:]].*\)\?$/ 
             \ contains=@vikiText,vikiRegionNames
 
+syn match vikiFilesMarkers /\[\[\([^\/]\+\/\)*\|\]!\]/ contained containedin=vikiFiles
+syn match vikiFilesIndicators /{.\{-}}/ contained containedin=vikiFiles
+syn match vikiFiles /^\s*\[\[.\{-}\]!\].*$/
+            \ contained containedin=vikiFilesRegion contains=vikiFilesMarkers,vikiFilesIndicators
+syn region vikiFilesRegion matchgroup=vikiMacroDelim
+            \ start=/^[[:blank:]]*#Files\>\(\\\n\|.\)\{-}<<\z(.*\)$/ 
+            \ end=/^[[:blank:]]*\z1[[:blank:]]*$/ 
+            \ contains=vikiFiles
+
+
+syntax sync minlines=2
+" syntax sync maxlines=50
+" syntax sync match vikiParaBreak /^\s*$/
+" syntax sync linecont /\\$/
 
 " if g:vikiHighlightMath == 'latex'
 "     runtime! syntax/tex.vim
@@ -163,10 +175,10 @@ syn region vikiRegionAlt matchgroup=vikiMacroDelim
 " For version 5.8 and later: only when an item doesn't have highlighting yet
 if version >= 508 || !exists("did_viki_syntax_inits")
   if version < 508
-    let did_viki_syntax_inits = 1
-    command! -nargs=+ HiLink hi link <args>
+      let did_viki_syntax_inits = 1
+      command! -nargs=+ HiLink hi link <args>
   else
-    command! -nargs=+ HiLink hi def link <args>
+      command! -nargs=+ HiLink hi def link <args>
   endif
   
   if &background == "light"
@@ -188,7 +200,8 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   else
       let s:twfont = ""
   endif
- 
+
+  HiLink vikiSemiParagraph NonText
   HiLink vikiEscapedChars Normal
   exe "hi vikiEscape ctermfg=". s:cm2 ."grey guifg=". s:cm2 ."grey"
   exe "hi vikiList term=bold cterm=bold gui=bold ctermfg=". s:cm1 ."Cyan guifg=". s:cm1 ."Cyan"
@@ -267,6 +280,10 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   HiLink vikiRegion Statement
   HiLink vikiRegionWEnd vikiRegion
   HiLink vikiRegionAlt vikiRegion
+  HiLink vikiFilesRegion Statement
+  HiLink vikiFiles Constant
+  HiLink vikiFilesMarkers Ignore
+  HiLink vikiFilesIndicators Special
   " HiLink vikiCommandNames Constant
   " HiLink vikiRegionNames Constant
   " HiLink vikiMacroNames Constant

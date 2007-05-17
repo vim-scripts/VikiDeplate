@@ -1,7 +1,7 @@
 " vikiLatex.vim -- viki add-on for LaTeX
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
-" @Created:     28-Jän-2004.
+" @Created:     28-JÃ¤n-2004.
 " @Last Change: 04-Mrz-2006.
 " @Revision:    0.164
 
