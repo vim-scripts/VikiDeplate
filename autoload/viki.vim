@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
-" @Last Change: 2007-05-12.
-" @Revision:    0.162
+" @Last Change: 2007-06-02.
+" @Revision:    0.165
 
 if &cp || exists("loaded_viki_auto")
     finish
@@ -115,6 +115,7 @@ endf
 fun! viki#VikiDirListing(lhs, lhb, indent)
     let args = s:GetRegionArgs(a:lhs, a:lhb - 1)
     let patt = get(args, 'glob', '')
+    " TLogVAR patt
     if empty(patt)
         echoerr 'Viki: No glob pattern defnied: '. string(args)
     else
@@ -124,7 +125,9 @@ fun! viki#VikiDirListing(lhs, lhb, indent)
             " let style = get(args, 'style', 'ls')
             " let ls = VikiGetDirListing_{style}(split(glob(patt), '\n'))
             let ls = split(glob(patt), '\n')
+            " TLogVAR ls
             let types = get(args, 'types', '')
+            " TLogVAR ls
             if !empty(types)
                 let show_files = stridx(types, 'f') != -1
                 let show_dirs  = stridx(types, 'd') != -1
@@ -234,7 +237,7 @@ fun! s:GetRegionArgs(ls, le)
                     let args[key] = substitute(val, '\\\(.\)', '\1', 'g')
                 else
                     let key = m[8]
-                    if key = '^no\u'
+                    if key == '^no\u'
                         let antikey = substitute(key, '^no\zs.', '\l&', '')
                     else
                         let antikey = 'no'. substitute(key, '^.', '\u&', '')

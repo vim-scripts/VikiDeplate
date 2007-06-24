@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 2007-05-11.
-" @Revision: 0.705
+" @Last Change: 2007-05-18.
+" @Revision: 0.706
 
 if !g:vikiEnabled
     finish
@@ -296,7 +296,7 @@ endif
 
 " if g:vikiMarkInexistent && !exists("b:vikiCheckInexistent")
 if g:vikiMarkInexistent
-    call VikiMarkInexistentInElement('Document')
+    call VikiMarkInexistentInitial()
 endif
 
 let b:current_syntax = 'viki'

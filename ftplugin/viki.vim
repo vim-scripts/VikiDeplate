@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 2007-04-10.
-" @Revision: 216
+" @Last Change: 2007-06-24.
+" @Revision: 266
 
 " if !g:vikiEnabled
 "     finish
@@ -67,156 +67,184 @@ let b:undo_ftplugin = 'setlocal iskeyword< expandtab< foldtext< foldexpr< foldme
 
 let b:vikiEnabled = 2
 
-if !exists('*VikiFoldLevel')
+if exists('*VikiFoldLevel')
+    finish
+endif
 
-    function VikiFoldText()
-      let line = getline(v:foldstart)
-      if synIDattr(synID(v:foldstart, 1, 1), 'name') =~ '^vikiFiles'
-          let line = fnamemodify(viki#VikiFilesGetFilename(line), ':h')
-      else
-          let line = matchstr(line, '^\s*\zs.*$')
-      endif
-      return v:folddashes . line
-    endf
+function! VikiFoldText()
+  let line = getline(v:foldstart)
+  if synIDattr(synID(v:foldstart, 1, 1), 'name') =~ '^vikiFiles'
+      let line = fnamemodify(viki#VikiFilesGetFilename(line), ':h')
+  else
+      let line = matchstr(line, '^\s*\zs.*$')
+  endif
+  return v:folddashes . line
+endf
 
-    fun! VikiFoldLevel(lnum)
-        let lc = getpos('.')
-        let w0 = line('w0')
-        let lr = &lazyredraw
-        set lazyredraw
-        try
-            let vikiFolds = exists('b:vikiFolds') ? b:vikiFolds : g:vikiFolds
-            if vikiFolds == 'ALL'
-                let vikiFolds = 'hHlsfb'
-            elseif vikiFolds == 'DEFAULT'
-                let vikiFolds = 'hf'
-            elseif vikiFolds == ''
-                return
-            endif
-            if vikiFolds =~# 'f'
-                let idt = indent(a:lnum)
-                if synIDattr(synID(a:lnum, idt, 1), 'name') =~ '^vikiFiles'
-                    call s:SetHeadingMaxLevel(1)
-                    return b:vikiHeadingMaxLevel + idt / &shiftwidth
-                endif
-            endif
-            if stridx(vikiFolds, 'h') >= 0
-                if vikiFolds =~? 'h'
-                    let fl = <SID>ScanHeading(a:lnum, a:lnum, vikiFolds)
-                    if fl != ''
-                        return fl
-                    endif
-                endif
-                if vikiFolds =~# 'l' 
-                    let list = <SID>MatchList(a:lnum)
-                    if list > 0
-                        call s:SetHeadingMaxLevel(1)
-                        " return '>'. (b:vikiHeadingMaxLevel + (list / &sw))
-                        return (b:vikiHeadingMaxLevel + (list / &sw))
-                    elseif getline(a:lnum) !~ '^[[:blank:]]' && <SID>MatchList(a:lnum - 1) > 0
-                        let fl = <SID>ScanHeading(a:lnum - 1, 1, vikiFolds)
-                        if fl != ''
-                            if fl[0] == '>'
-                                let fl = strpart(fl, 1)
-                            endif
-                            return '<'. (fl + 1)
-                        endif
-                    endif
-                endif
-                if vikiFolds =~# 's'
-                    if exists('b:vikiFoldDef')
-                        exec b:vikiFoldDef
-                        if vikiFoldLine == a:lnum
-                            return vikiFoldLevel
-                        endif
-                    endif
-                    let i = 1
-                    while i > a:lnum
-                        let vfl = VikiFoldLevel(a:lnum - i)
-                        if vfl[0] == '>'
-                            let b:vikiFoldDef = 'let vikiFoldLine='. a:lnum 
-                                        \ .'|let vikiFoldLevel="'. vfl .'"'
-                            return vfl
-                        elseif vfl == '='
-                            let i = i + 1
-                        endif
-                    endwh
-                endif
-                call s:SetHeadingMaxLevel(1)
-                " if b:vikiHeadingMaxLevel == 0
-                "     return 0
-                " elseif vikiFolds =~# 'b'
-                if vikiFolds =~# 'b'
-                    let bl = exists('b:vikiFoldBodyLevel') ? b:vikiFoldBodyLevel : g:vikiFoldBodyLevel
-                    if bl > 0
-                        return bl
-                    else
-                        return b:vikiHeadingMaxLevel + 1
-                    endif
-                else
-                    return "="
-                endif
-            endif
-            return 0
-        finally
-            exec 'norm! '. w0 .'zt'
-            call setpos('.', lc)
-            let &lazyredraw = lr
-        endtry
-    endfun
-
-    fun! <SID>ScanHeading(lnum, top, vikiFolds)
-        let lnum = a:lnum
-        while lnum >= a:top
-            let head = <SID>MatchHead(lnum)
-            if head > 0
-                if head > b:vikiHeadingMaxLevel
-                    let b:vikiHeadingMaxLevel = head
-                endif
-                if b:vikiInverseFold || a:vikiFolds =~# 'H'
-                    if b:vikiMaxFoldLevel > head
-                        return ">". (b:vikiMaxFoldLevel - head)
-                    else
-                        return ">0"
-                    end
-                else
-                    return ">". head
-                endif
-            endif
-            let lnum = lnum - 1
-        endwh
-        return ''
-    endf
-
-    fun! s:SetHeadingMaxLevel(once)
-        if a:once && b:vikiHeadingMaxLevel != 0
+function! VikiFoldLevel(lnum)
+    let lc = getpos('.')
+    " TLogVAR lc
+    let w0 = line('w0')
+    let lr = &lazyredraw
+    set lazyredraw
+    try
+        let vikiFolds = tlib#GetValue('vikiFolds', 'bg')
+        if vikiFolds == 'ALL'
+            let vikiFolds = 'hHlsfb'
+        elseif vikiFolds == 'DEFAULT'
+            let vikiFolds = 'hf'
+        elseif vikiFolds == ''
+            " TLogDBG 'no folds'
             return
         endif
-        let p = getpos('.')
-        try
-            let rx = '\V\^'. b:vikiHeadingStart .'\+\ze\s\+'
-            norm! gg0
-            while search(rx, 'Wc')
-                let m = <SID>MatchHead(line('.'))
-                if m > b:vikiHeadingMaxLevel
-                    let let b:vikiHeadingMaxLevel = m
+        if vikiFolds =~# 'f'
+            let idt = indent(a:lnum)
+            if synIDattr(synID(a:lnum, idt, 1), 'name') =~ '^vikiFiles'
+                call s:SetHeadingMaxLevel(1)
+                " TLogDBG 'vikiFiles: '. idt
+                return b:vikiHeadingMaxLevel + idt / &shiftwidth
+            endif
+        endif
+        if stridx(vikiFolds, 'h') >= 0
+            if vikiFolds =~? 'h'
+                let fl = s:ScanHeading(a:lnum, a:lnum, vikiFolds)
+                if fl != ''
+                    " TLogDBG 'heading: '. fl
+                    return fl
                 endif
-                norm! j
-            endwh
-        finally
-            call setpos('.', p)
-        endtry
-    endf
+            endif
+            if vikiFolds =~# 'l' 
+                let list = s:MatchList(a:lnum)
+                if list > 0
+                    call s:SetHeadingMaxLevel(1)
+                    " TLogVAR list
+                    " return '>'. (b:vikiHeadingMaxLevel + (list / &sw))
+                    return (b:vikiHeadingMaxLevel + (list / &sw))
+                elseif getline(a:lnum) !~ '^[[:blank:]]' && s:MatchList(a:lnum - 1) > 0
+                    let fl = s:ScanHeading(a:lnum - 1, 1, vikiFolds)
+                    if fl != ''
+                        if fl[0] == '>'
+                            let fl = strpart(fl, 1)
+                        endif
+                        " TLogDBG 'list indent: '. fl
+                        return '<'. (fl + 1)
+                    endif
+                endif
+            endif
+            " I have no idea what this is about
+            " if vikiFolds =~# 's'
+            "     if exists('b:vikiFoldDef')
+            "         exec b:vikiFoldDef
+            "         if vikiFoldLine == a:lnum
+            "             return vikiFoldLevel
+            "         endif
+            "     endif
+            "     let i = 1
+            "     while i > a:lnum
+            "         let vfl = VikiFoldLevel(a:lnum - i)
+            "         if vfl[0] == '>'
+            "             let b:vikiFoldDef = 'let vikiFoldLine='. a:lnum 
+            "                         \ .'|let vikiFoldLevel="'. vfl .'"'
+            "             return vfl
+            "         elseif vfl == '='
+            "             let i = i + 1
+            "         endif
+            "     endwh
+            " endif
+            call s:SetHeadingMaxLevel(1)
+            " if b:vikiHeadingMaxLevel == 0
+            "     return 0
+            " elseif vikiFolds =~# 'b'
+            if vikiFolds =~# 'b'
+                let bl = exists('b:vikiFoldBodyLevel') ? b:vikiFoldBodyLevel : g:vikiFoldBodyLevel
+                if bl > 0
+                    " TLogDBG 'body: '. bl
+                    return bl
+                else
+                    " TLogDBG 'body fallback: '. b:vikiHeadingMaxLevel
+                    return b:vikiHeadingMaxLevel + 1
+                endif
+            else
+                " TLogDBG 'else'
+                return "="
+            endif
+        endif
+        " TLogDBG 'zero'
+        return 0
+    finally
+        exec 'norm! '. w0 .'zt'
+        " TLogVAR lc
+        call setpos('.', lc)
+        let &lazyredraw = lr
+    endtry
+endfun
 
-    fun! <SID>MatchHead(lnum)
-        " let head = matchend(getline(a:lnum), '\V\^'. escape(b:vikiHeadingStart, '\') .'\ze\s\+')
-        return matchend(getline(a:lnum), '\V\^'. b:vikiHeadingStart .'\+\ze\s\+')
-    endf
+function! s:ScanHeading(lnum, top, vikiFolds)
+    " TLogVAR a:lnum, a:top
+    let [lhead, head] = s:SearchHead(a:lnum, a:top)
+    " TLogVAR head
+    if head > 0
+        if head > b:vikiHeadingMaxLevel
+            let b:vikiHeadingMaxLevel = head
+        endif
+        if b:vikiInverseFold || a:vikiFolds =~# 'H'
+            if b:vikiMaxFoldLevel > head
+                return ">". (b:vikiMaxFoldLevel - head)
+            else
+                return ">0"
+            end
+        else
+            return ">". head
+        endif
+    endif
+    return ''
+endf
 
-    fun! <SID>MatchList(lnum)
-        let rx = '^[[:blank:]]\+\ze\(#[A-F]\d\?\|#\d[A-F]\?\|[-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\|.\{-1,}[[:blank:]]::\)[[:blank:]]'
-        return matchend(getline(a:lnum), rx)
-    endf
+function! s:SetHeadingMaxLevel(once)
+    if a:once && b:vikiHeadingMaxLevel != 0
+        return
+    endif
+    let pos = getpos('.')
+    " TLogVAR pos
+    try
+        silent! keepjumps exec 'g/\V\^'. b:vikiHeadingStart .'\+\s/call s:SetHeadingMaxLevelAtCurrentLine(line(".")'
+    finally
+        " TLogVAR pos
+        call setpos('.', pos)
+    endtry
+endf
 
-endif
+function! s:SetHeadingMaxLevelAtCurrentLine(lnum) "{{{3
+    let m = s:MatchHead(lnum)
+    if m > b:vikiHeadingMaxLevel
+        let b:vikiHeadingMaxLevel = m
+    endif
+endf
+
+function! s:SearchHead(lnum, top)
+    let pos = getpos('.')
+    " TLogVAR pos
+    try
+        exec a:lnum
+        norm! $
+        let ln = search('\V\^'. b:vikiHeadingStart .'\+\s', 'bWcs', a:top)
+        if ln
+            return [ln, s:MatchHead(ln)]
+        endif
+        return [0, 0]
+    finally
+        " TLogVAR pos
+        call setpos('.', pos)
+    endtry
+endf
+
+function! s:MatchHead(lnum)
+    " let head = matchend(getline(a:lnum), '\V\^'. escape(b:vikiHeadingStart, '\') .'\ze\s\+')
+    return matchend(getline(a:lnum), '\V\^'. b:vikiHeadingStart .'\+\ze\s')
+endf
+
+function! s:MatchList(lnum)
+    let rx = '^[[:blank:]]\+\ze\(#[A-F]\d\?\|#\d[A-F]\?\|[-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\|.\{-1,}[[:blank:]]::\)[[:blank:]]'
+    return matchend(getline(a:lnum), rx)
+endf
 

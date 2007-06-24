@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     28-Jän-2004.
-" @Last Change: 04-Mrz-2006.
-" @Revision:    0.164
+" @Last Change: 2007-06-07.
+" @Revision:    0.178
 
 if &cp || exists("s:loaded_vikiLatex")
     finish
@@ -44,7 +44,8 @@ fun! VikiLatexCheckFilename(filename, ...)
         """ search in the current directory
         let i = 1
         while i <= a:0
-            exe "let fn = '".a:filename."'.a:". i
+            let fn = a:filename .a:{i}
+            " TLogVAR fn
             if filereadable(fn)
                 return fn
             endif
@@ -54,8 +55,8 @@ fun! VikiLatexCheckFilename(filename, ...)
         """ use kpsewhich
         let i = 1
         while i <= a:0
-            exe "let fn = '".a:filename."'.a:". i
-            exe "let rv = system('kpsewhich ". fn ."')"
+            let fn = a:filename .a:{i}
+            let rv = system('kpsewhich '. string(fn))
             if rv != ""
                 return substitute(rv, "\n", "", "g")
             endif
@@ -67,52 +68,55 @@ endfun
 
 
 fun! VikiCompleteSimpleNameDefLaTeX(def)
-    let cmd = MvElementAt(a:def, g:vikiDefSep, 0)
-    if cmd == g:vikiDefNil
-        throw "Viki: Malformed command (no name): ".a:def
+    exec VikiSplitDef(a:def)
+    if v_name == g:vikiDefNil
+        throw "Viki: Malformed command (no name): ". string(a:def)
     endif
-    let dest = MvElementAt(a:def, g:vikiDefSep, 1)
-    let opts = MvElementAt(a:def, g:vikiDefSep, 2)
-    let part = MvElementAt(a:def, g:vikiDefSep, 3)
-    let anchor    = g:vikiDefNil
+    let opts = v_anchor
+    let v_anchor  = g:vikiDefNil
     let useSuffix = g:vikiDefSep
 
-    if cmd == "input"
-        let dest = VikiLatexCheckFilename(dest, "", ".tex", ".sty")
-    elseif cmd == "usepackage"
-        let dest = VikiLatexCheckFilename(dest, ".sty")
-    elseif cmd == "include"
-        let dest = VikiLatexCheckFilename(dest, ".tex")
-    elseif cmd == "viki"
-        let dest = VikiLatexCheckFilename(dest, ".tex")
-        let anchor = opts
-    elseif cmd == "psfig"
-        let f == matchstr(dest, "figure=\zs.\{-}\ze[,}]")
-        let dest = VikiLatexCheckFilename(dest, "")
-    elseif cmd == "includegraphics"
-        let dest = VikiLatexCheckFilename(dest, "", 
+    if v_name == "input"
+        let v_dest = VikiLatexCheckFilename(v_dest, "", ".tex", ".sty")
+    elseif v_name == "usepackage"
+        let v_dest = VikiLatexCheckFilename(v_dest, ".sty")
+    elseif v_name == "include"
+        let v_dest = VikiLatexCheckFilename(v_dest, ".tex")
+    elseif v_name == "viki"
+        let v_dest = VikiLatexCheckFilename(v_dest, ".tex")
+        let v_anchor = opts
+    elseif v_name == "psfig"
+        let f == matchstr(v_dest, "figure=\zs.\{-}\ze[,}]")
+        let v_dest = VikiLatexCheckFilename(v_dest, "")
+    elseif v_name == "includegraphics"
+        let v_dest = VikiLatexCheckFilename(v_dest, "", 
                     \ ".eps", ".ps", ".pdf", ".png", ".jpeg", ".jpg", ".gif", ".wmf")
-    elseif cmd == "bibliography"
-        let n = VikiSelect(dest, ",", "Select Bibliography")
-        if n >= 0
-            let f    = MvElementAt(dest, ",", n)
-            let dest = VikiLatexCheckFilename(f, ".bib")
-        else
-            let dest = ""
+    elseif v_name == "bibliography"
+        if !exists('b:vikiMarkingInexistent')
+            let bibs = split(v_dest, ",")
+            let n = tlib#InputList('si', "Select Bibliography", bibs)
+            if n > 0
+                let f      = bibs[n - 1]
+                let v_dest = VikiLatexCheckFilename(f, ".bib")
+            else
+                let v_dest = ""
+            endif
         endif
-    elseif cmd == "ref"
-        let anchor = dest
-        let dest   = g:vikiSelfRef
-    elseif exists("*VikiLaTeX_".cmd)
-        exe VikiLaTeX_{cmd}(dest, opts)
+    elseif v_name == "ref"
+        let v_anchor = v_dest
+        let v_dest   = g:vikiSelfRef
+    elseif exists("*VikiLaTeX_".v_name)
+        exe VikiLaTeX_{v_name}(v_dest, opts)
     else
-        throw "Viki LaTeX: unsupported command: ". cmd
+        throw "Viki LaTeX: unsupported command: ". v_name
     endif
     
-    if dest == ""
-        throw "Viki LaTeX: can't find: ". cmd ." ". a:def
+    if v_dest == ""
+        if !exists('b:vikiMarkingInexistent')
+            throw "Viki LaTeX: can't find: ". v_name ." ". string(a:def)
+        endif
     else
-        return VikiMakeDef(cmd, dest, anchor, part, 'simple')
+        return VikiMakeDef(v_name, v_dest, v_anchor, v_part, 'simple')
     endif
 endfun
 
