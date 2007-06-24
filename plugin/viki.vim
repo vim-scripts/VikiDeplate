@@ -3,7 +3,7 @@
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
 " @Last Change: 2007-06-24.
-" @Revision: 2.1.2115
+" @Revision: 2.2.2126
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -40,11 +40,11 @@
 if &cp || exists("loaded_viki") "{{{2
     finish
 endif
-if !exists('loaded_tlib') || loaded_tlib < 6
-    echoerr 'tlib >= 0.6 is required'
+if !exists('loaded_tlib') || loaded_tlib < 8
+    echoerr 'tlib >= 0.8 is required'
     finish
 endif
-let loaded_viki = 201
+let loaded_viki = 202
 
 " This is what we consider nil, in the absence of nil in vimscript
 let g:vikiDefNil  = ''
@@ -581,7 +581,7 @@ endf
 " maxcol ... check only up to maxcol
 " quick  ... check only if the cursor is located after a link
 function! s:VikiMarkInexistent(line1, line2, ...) "{{{3
-    if !b:vikiMarkInexistent
+    if !exists('b:vikiMarkInexistent') || !b:vikiMarkInexistent
         return
     endif
     if s:cursorCol == -1
@@ -855,15 +855,18 @@ endf
 function! VikiMarkInexistentInitial() "{{{3
     if g:vikiCacheInexistent
         let cfile = tlib#GetCacheName('viki_inexistent', '', 1)
-        let cvals = tlib#CacheGet(cfile)
-        " TLogVAR cvals
-        if !empty(cvals)
-            for [key, value] in items(cvals)
-                let b:{key} = value
-                unlet value
-            endfor
-            call VikiHighlightInexistent()
-            return
+        " TLogVAR cfile
+        if !empty(cfile)
+            let cvals = tlib#CacheGet(cfile)
+            " TLogVAR cvals
+            if !empty(cvals)
+                for [key, value] in items(cvals)
+                    let b:{key} = value
+                    unlet value
+                endfor
+                call VikiHighlightInexistent()
+                return
+            endif
         endif
     else
         let cfile = ''
@@ -2641,8 +2644,8 @@ command! -nargs=* -bang VikiFilesCall call viki#VikiFilesCall(<q-args>, '<bang>'
 augroup viki
     au!
     autocmd BufEnter * call VikiMinorModeReset()
-    " autocmd BufEnter * call VikiCheckInexistent()
-    " autocmd BufLeave * if &filetype == 'viki' | let b:vikiCheckInexistent = line(".") | endif
+    autocmd BufEnter * call VikiCheckInexistent()
+    autocmd BufLeave * if &filetype == 'viki' | let b:vikiCheckInexistent = line(".") | endif
     autocmd VimLeavePre * let g:vikiEnabled = 0
     if g:vikiSaveHistory
         autocmd VimEnter * if exists('VIKIBACKREFS_STRING') | exec 'let g:VIKIBACKREFS = '. VIKIBACKREFS_STRING | unlet VIKIBACKREFS_STRING | endif
@@ -2979,6 +2982,11 @@ with an external viewer
 - ftplugin/viki.vim: FIX: Problem with heading in the last line. 
 Disabled vikiFolds type 's' (until I find out what this was about)
 - Always check the current line for inexistent links when re-entering a viki buffer
+
+2.2
+- Re-Enabled the previously (2.1) made and then disabled change concerning re-entering a viki buffer
+- Don't try to use cached values for buffers that have no file attached yet (thanks to Erik Olsson)
+- Require tlib >= 0.8
 
 
 " vim: ff=unix
