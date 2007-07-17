@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 2007-05-18.
-" @Revision: 0.706
+" @Last Change: 2007-06-30.
+" @Revision: 0.708
 
 if !g:vikiEnabled
     finish
@@ -129,9 +129,6 @@ syn match vikiSkeleton /{{\_.\{-}[^\\]}}/
 syn region vikiMacro matchgroup=vikiMacroDelim start=/{\W\?[^:{}]*:\?/ end=/}/ 
             \ transparent contains=@vikiText,vikiMacroNames,vikiMacro
 
-syn match vikiCommand /^\C[[:blank:]]*#\([A-Z]\{2,}\)\>\(\\\n\|.\)*/
-            \ contains=vikiCommandNames
-
 syn region vikiRegion matchgroup=vikiMacroDelim 
             \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\(\\\n\|.\)\{-}<<\z(.*\)$/ 
             \ end=/^[[:blank:]]*\z1[[:blank:]]*$/ 
@@ -144,6 +141,9 @@ syn region vikiRegionAlt matchgroup=vikiMacroDelim
             \ start=/^[[:blank:]]*\z(=\{4,}\)[[:blank:]]*\([A-Z][a-z]*\>\|!!!\)\(\\\n\|.\)\{-}$/ 
             \ end=/^[[:blank:]]*\z1\([[:blank:]].*\)\?$/ 
             \ contains=@vikiText,vikiRegionNames
+
+syn match vikiCommand /^\C[[:blank:]]*#\([A-Z]\{2,}\)\>\(\\\n\|.\)*/
+            \ contains=vikiCommandNames
 
 syn match vikiFilesMarkers /\[\[\([^\/]\+\/\)*\|\]!\]/ contained containedin=vikiFiles
 syn match vikiFilesIndicators /{.\{-}}/ contained containedin=vikiFiles

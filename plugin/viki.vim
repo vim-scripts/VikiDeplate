@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2007-06-24.
-" @Revision: 2.2.2126
+" @Last Change: 2007-07-10.
+" @Revision: 2.3.2151
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -40,11 +40,11 @@
 if &cp || exists("loaded_viki") "{{{2
     finish
 endif
-if !exists('loaded_tlib') || loaded_tlib < 8
-    echoerr 'tlib >= 0.8 is required'
+if !exists('loaded_tlib') || loaded_tlib < 9
+    echoerr 'tlib >= 0.9 is required'
     finish
 endif
-let loaded_viki = 202
+let loaded_viki = 203
 
 " This is what we consider nil, in the absence of nil in vimscript
 let g:vikiDefNil  = ''
@@ -171,62 +171,95 @@ endf
 
 " If non-nil, use the parent document's suffix.
 if !exists("g:vikiUseParentSuffix") | let g:vikiUseParentSuffix = 0      | endif "{{{2
+
 " Default file suffix.
 if !exists("g:vikiNameSuffix")      | let g:vikiNameSuffix = ""          | endif "{{{2
+
 " Prefix for anchors
 if !exists("g:vikiAnchorMarker")    | let g:vikiAnchorMarker = "#"       | endif "{{{2
+
 " If non-nil, search anchors anywhere in the text too (without special 
 " markup)
 if !exists("g:vikiFreeMarker")      | let g:vikiFreeMarker = 0           | endif "{{{2
+
 " List of enabled viki name types
 if !exists("g:vikiNameTypes")       | let g:vikiNameTypes = "csSeuixwf"  | endif "{{{2
+
 " Which directory explorer to use to edit directories
 if !exists("g:vikiExplorer")        | let g:vikiExplorer = "Sexplore"    | endif "{{{2
+
+" if !exists("g:vikiExplorer")        | let g:vikiExplorer = "edit"          | endif "{{{2
 " If hide or update: use the respective command when leaving a buffer
 if !exists("g:vikiHide")            | let g:vikiHide = ''                | endif "{{{2
+
 " Don't use g:vikiHide for commands matching this rx
 if !exists("g:vikiNoWrapper")       | let g:vikiNoWrapper = '\cexplore'  | endif "{{{2
+
 " Cache information about a document's inexistent names
 if !exists("g:vikiCacheInexistent") | let g:vikiCacheInexistent = 1      | endif "{{{2
+
 " Mark up inexistent names.
 if !exists("g:vikiMarkInexistent")  | let g:vikiMarkInexistent = 1       | endif "{{{2
+
 " If non-nil, map keys that trigger the evaluation of inexistent names
 if !exists("g:vikiMapInexistent")   | let g:vikiMapInexistent = 1        | endif "{{{2
+
 " Map these keys for g:vikiMapInexistent to LineQuick
 if !exists("g:vikiMapKeys")         | let g:vikiMapKeys = "]).,;:!?\"' " | endif "{{{2
+
 " Map these keys for g:vikiMapInexistent to ParagraphVisible
 if !exists("g:vikiMapQParaKeys")    | let g:vikiMapQParaKeys = "\n"      | endif "{{{2
+
 " Check the viki name before inserting this character
 if !exists("g:vikiMapBeforeKeys")   | let g:vikiMapBeforeKeys = ']'      | endif "{{{2
+
 " Some functions a gathered in families/classes. See vikiLatex.vim for 
 " an example.
 if !exists("g:vikiFamily")          | let g:vikiFamily = ""              | endif "{{{2
+
 " The directory separator
 if !exists("g:vikiDirSeparator")    | let g:vikiDirSeparator = "/"       | endif "{{{2
+
 " The version of Deplate markup
 if !exists("g:vikiTextstylesVer")   | let g:vikiTextstylesVer = 2        | endif "{{{2
+
 " if !exists("g:vikiBasicSyntax")     | let g:vikiBasicSyntax = 0          | endif "{{{2
 " If non-nil, display headings of different levels in different colors
 if !exists("g:vikiFancyHeadings")   | let g:vikiFancyHeadings = 0        | endif "{{{2
+
+" Choose folding method version
+if !exists("g:vikiFoldMethodVersion") | let g:vikiFoldMethodVersion = 3  | endif "{{{2
+
+" What is considered for folding.
+" This variable is only used if g:vikiFoldMethodVersion is 1.
+if !exists("g:vikiFolds")           | let g:vikiFolds = 'hf'             | endif "{{{2
+
 " Consider fold levels bigger that this as text body, levels smaller 
 " than this as headings
-if !exists("g:vikiFoldBodyLevel")   | let g:vikiFoldBodyLevel = 5        | endif "{{{2
+" This variable is only used if g:vikiFoldMethodVersion is 1.
+if !exists("g:vikiFoldBodyLevel")   | let g:vikiFoldBodyLevel = 6        | endif "{{{2
+
 " The default viki page (as absolute filename)
 if !exists("g:vikiHomePage")        | let g:vikiHomePage = ''            | endif "{{{2
-" What is considered for folding
-if !exists("g:vikiFolds")           | let g:vikiFolds = 'hf'             | endif "{{{2
+
 " The default filename for an interviki's index name
 if !exists("g:vikiIndex")           | let g:vikiIndex = 'index'          | endif "{{{2
+
 " How often the feedback is changed when marking inexisting links
 if !exists("g:vikiFeedbackMin")     | let g:vikiFeedbackMin = &lines     | endif "{{{2
+
 " The map leader for most viki key maps.
 if !exists("g:vikiMapLeader")       | let g:vikiMapLeader = '<LocalLeader>v' | endif "{{{2
+
 " If non-nil, anchors like #mX are turned into vim marks
 if !exists("g:vikiAutoMarks")       | let g:vikiAutoMarks = 1            | endif "{{{2
+
 " if !exists("g:vikiOpenInWindow")    | let g:vikiOpenInWindow = ''        | endif "{{{2
 if !exists("g:vikiHighlightMath")   | let g:vikiHighlightMath = ''       | endif "{{{2
+
 " If non-nil, cache back-links information
 if !exists("g:vikiSaveHistory")     | let g:vikiSaveHistory = 0          | endif "{{{2
+
 " The variable that keeps back-links information
 if !exists("g:VIKIBACKREFS")        | let g:VIKIBACKREFS = {}            | endif "{{{2
 
@@ -477,15 +510,19 @@ function! s:EditWrapper(cmd, fname) "{{{3
     let fname = escape(simplify(a:fname), ' %#')
     " let fname = escape(simplify(a:fname), '%#')
     if a:cmd =~ g:vikiNoWrapper
+        " TLogDBG a:cmd .' '. fname
         exec a:cmd .' '. fname
     else
         try
             if g:vikiHide == 'hide'
+                " TLogDBG 'hide '. a:cmd .' '. fname
                 exec 'hide '. a:cmd .' '. fname
             elseif g:vikiHide == 'update'
                 update
+                " TLogDBG a:cmd .' '. fname
                 exec a:cmd .' '. fname
             else
+                " TLogDBG a:cmd .' '. fname
                 exec a:cmd .' '. fname
             endif
         catch /^Vim\%((\a\+)\)\=:E37/
@@ -854,10 +891,10 @@ endf
 " from syntax/viki.vim
 function! VikiMarkInexistentInitial() "{{{3
     if g:vikiCacheInexistent
-        let cfile = tlib#GetCacheName('viki_inexistent', '', 1)
+        let cfile = tlib#cache#Filename('viki_inexistent', '', 1)
         " TLogVAR cfile
         if !empty(cfile)
-            let cvals = tlib#CacheGet(cfile)
+            let cvals = tlib#cache#Get(cfile)
             " TLogVAR cvals
             if !empty(cvals)
                 for [key, value] in items(cvals)
@@ -878,7 +915,7 @@ function! VikiMarkInexistentInitial() "{{{3
         call s:CValsSet(cvals, 'vikiNamesOk')
         call s:CValsSet(cvals, 'vikiInexistentHighlight')
         call s:CValsSet(cvals, 'vikiMarkInexistent')
-        call tlib#CacheSave(cfile, cvals)
+        call tlib#cache#Save(cfile, cvals)
     endif
 endf
 
@@ -1562,7 +1599,7 @@ function! s:VikiSelectBackRef(...) "{{{3
     else
         let br  = s:GetBackRef()
         let br0 = map(copy(br), 'v:val[0]')
-        let st  = tlib#InputList('s', 'Select Back Reference', br0)
+        let st  = tlib#input#List('s', 'Select Back Reference', br0)
         if st != ''
             let s = index(br0, st)
         else
@@ -1790,8 +1827,11 @@ function! VikiOpenLink(filename, anchor, ...) "{{{3
     let co = col('.')
     let fi = expand('%:p')
    
-    let filename = exists('*simplify') ? simplify(a:filename) : a:filename
-    let buf      = bufnr('^'. filename .'$')
+    let filename = fnamemodify(a:filename, ':p')
+    if exists('*simplify')
+        let filename = simplify(filename)
+    endif
+    let buf = bufnr('^'. filename .'$')
     call VikiSetWindow(winNr)
     if buf >= 0
         call s:EditLocalFile('buffer', buf, fi, li, co, a:anchor)
@@ -1814,7 +1854,7 @@ function! s:EditLocalFile(cmd, fname, fi, li, co, anchor) "{{{3
     " TLogVAR a:cmd, a:fname
     let vf = s:Family()
     let cb = bufnr('%')
-    call tlib#EnsureDirectoryExists(fnamemodify(a:fname, ':p:h'))
+    call tlib#dir#Ensure(fnamemodify(a:fname, ':p:h'))
     call s:EditWrapper(a:cmd, a:fname)
     if cb != bufnr('%')
         set buflisted
@@ -2966,7 +3006,7 @@ opened either way.
 - Set the default value of g:vikiFeedbackMin to &lines.
 - Added ws as special files to be opened with :WsOpen if existent.
 - Replaced most occurences of <SID> with s:
-- Use tlib#InputList() for selecting back references.
+- Use tlib#input#List() for selecting back references.
 - g:vikiOpenFileWith_ANY now uses g:netrw_browsex_viewer by default.
 - CHANGE: g:vikiSaveHistory: We now rely on viminfo's "!" option to save 
 back-references.
@@ -2978,15 +3018,26 @@ with an external viewer
 - Cache inexistent patterns (experimental)
 - s:EditWrapper: Don't escape ' '.
 - FIX: VikiMode(): Error message about b:did_ftplugin not being defined
-- FIX: Check if g:netrw_browsex_viewer is defined (thanks to Erik Olsson for pointing this and some other problems out)
-- ftplugin/viki.vim: FIX: Problem with heading in the last line. 
+- FIX: Check if g:netrw_browsex_viewer is defined (thanks to Erik Olsson 
+for pointing this and some other problems out)
+- ftplugin/viki.vim: FIX: Problem with heading in the last line.  
 Disabled vikiFolds type 's' (until I find out what this was about)
-- Always check the current line for inexistent links when re-entering a viki buffer
+- Always check the current line for inexistent links when re-entering a 
+viki buffer
 
 2.2
-- Re-Enabled the previously (2.1) made and then disabled change concerning re-entering a viki buffer
-- Don't try to use cached values for buffers that have no file attached yet (thanks to Erik Olsson)
+- Re-Enabled the previously (2.1) made and then disabled change 
+concerning re-entering a viki buffer
+- Don't try to use cached values for buffers that have no file attached 
+yet (thanks to Erik Olsson)
 - Require tlib >= 0.8
+
+2.3
+- Require tlib >= 0.9
+- FIX: Use absolute file names when editing a local file (avoid problem 
+when opening a file in a different window with a different CWD).
+- New folding routine. Use the old folding method by setting 
+g:vikiFoldMethodVersion to 1.
 
 
 " vim: ff=unix

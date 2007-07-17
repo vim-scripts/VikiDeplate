@@ -3,8 +3,8 @@
 " @Website:     http://members.a1.net/t.link/
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     16-Jän-2004.
-" @Last Change: 2007-05-25.
-" @Revision: 0.254
+" @Last Change: 2007-07-17.
+" @Revision: 0.258
 
 if !g:vikiEnabled
     finish
@@ -42,10 +42,10 @@ fun! VikiGetIndent()
         endif
 
         let ind  = indent(lnum)
-        if ind == 0
-            " TLogVAR ind
-            return 0
-        end
+        " if ind == 0
+        "     TLogVAR ind
+        "     return 0
+        " end
 
         let line = getline(lnum)      " last line
         
