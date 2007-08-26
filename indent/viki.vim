@@ -3,8 +3,8 @@
 " @Website:     http://members.a1.net/t.link/
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     16-Jän-2004.
-" @Last Change: 2007-07-17.
-" @Revision: 0.258
+" @Last Change: 2007-07-19.
+" @Revision: 0.260
 
 if !g:vikiEnabled
     finish
@@ -21,6 +21,7 @@ if !exists("g:vikiIndentDesc") | let g:vikiIndentDesc = 'sw' | endif "{{{2
 setlocal indentexpr=VikiGetIndent()
 " setlocal indentkeys&
 setlocal indentkeys=0=#\ ,0=?\ ,0=<*>\ ,0=-\ ,0=+\ ,0=@\ ,=::\ ,!^F,o,O
+" setlocal indentkeys=0=#<space>,0=?<space>,0=<*><space>,0=-<space>,=::<space>,!^F,o,O
 " setlocal indentkeys=0=#<space>,0=?<space>,0=<*><space>,0=-<space>,=::<space>,!^F,o,O,e
 
 " Define the function only once.

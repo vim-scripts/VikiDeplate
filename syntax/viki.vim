@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (samul AT web.de)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 2007-06-30.
-" @Revision: 0.708
+" @Last Change: 2007-08-18.
+" @Revision: 0.710
 
 if !g:vikiEnabled
     finish
@@ -58,7 +58,8 @@ endif
 syn cluster vikiText contains=@vikiTextstyles,@vikiHyperLinks,vikiMarkers
 
 " exe 'syn match vikiComment /\V\^\[[:blank:]]\*'. escape(b:vikiCommentStart, '\/') .'\.\*/ contains=@vikiText'
-syn match vikiComment /^[[:blank:]]*%.*$/ contains=@vikiText
+" syn match vikiComment /^[[:blank:]]*%.*$/ contains=@vikiText
+syn match vikiComment /^[[:blank:]]*%.*$/ contains=@vikiHyperLinks,vikiMarkers,vikiEscapedChar
 
 " syn region vikiString start=+^[[:blank:]]\+"\|"+ end=+"[.?!]\?[[:blank:]]\+$\|"+ contains=@vikiText
 " syn region vikiString start=+^"\|\s"\|[({\[]\zs"+ end=+"+ contains=@vikiText
