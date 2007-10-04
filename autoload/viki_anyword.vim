@@ -1,27 +1,25 @@
 " vikiAnyWord.vim
-" @Author:      Thomas Link (mailto:samul@web.de?subject=vim-vikiAnyWord)
+" @Author:      Thomas Link (mailto:micathom AT gmail com?subject=vim-vikiAnyWord)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     04-Apr-2005.
-" @Last Change: 16-Feb-2006.
-" @Revision:    0.14
+" @Last Change: 2007-10-04.
+" @Revision:    0.30
 
-if &cp || exists("loaded_vikianyword")
+if &cp || exists('loaded_viki_anyword')
     finish
 endif
-let loaded_vikianyword = 1
+let loaded_viki_anyword = 1
 
 """" Any Word {{{1
-fun! VikiMinorModeAnyWord (state) "{{{3
-    let b:vikiFamily = 'AnyWord'
-    call VikiMinorMode(a:state)
+function! viki_anyword#MinorMode(state) "{{{3
+    let b:vikiFamily = 'anyword'
+    call viki_viki#MinorMode(a:state)
 endfun
-command! VikiMinorModeAnyWord call VikiMinorModeAnyWord(1)
-command! VikiMinorModeMaybeAnyWord call VikiMinorModeAnyWord(-1)
+command! VikiMinorModeAnyWord call viki_anyword#MinorMode(1)
 
-fun! VikiSetupBufferAnyWord(state, ...) "{{{3
-    echom "DBG VikiSetupBufferAnyWord"
+function! viki_anyword#SetupBuffer(state, ...) "{{{3
     let dontSetup = a:0 > 0 ? a:1 : ''
-    call VikiSetupBuffer(a:state, dontSetup)
+    call viki_viki#SetupBuffer(a:state, dontSetup)
     if b:vikiNameTypes =~? "s" && !(dontSetup =~? "s")
         if b:vikiNameTypes =~# "S" && !(dontSetup =~# "S")
             let simpleWikiName = b:vikiSimpleNameQuoteBeg
@@ -64,7 +62,7 @@ fun! VikiSetupBufferAnyWord(state, ...) "{{{3
     let b:vikiMarkInexistent = 2
 endf
 
-fun! VikiDefineMarkupAnyWord(state) "{{{3
+function! viki_anyword#DefineMarkup(state) "{{{3
     if b:vikiNameTypes =~? "s" && b:vikiSimpleNameRx != ""
         exe "syn match vikiRevLink /" . b:vikiSimpleNameRx . "/"
     endif
@@ -76,9 +74,9 @@ fun! VikiDefineMarkupAnyWord(state) "{{{3
     endif
 endfun
 
-fun! VikiDefineHighlightingAnyWord(state, ...) "{{{3
+function! viki_anyword#DefineHighlighting(state, ...) "{{{3
     let dontSetup = a:0 > 0 ? a:1 : ''
-    call VikiDefineHighlighting(a:state)
+    call viki_viki#DefineHighlighting(a:state)
     if version < 508
         command! -nargs=+ VikiHiLink hi link <args>
     else
@@ -88,10 +86,10 @@ fun! VikiDefineHighlightingAnyWord(state, ...) "{{{3
     delcommand VikiHiLink
 endf
 
-fun! VikiFindAnyWord(flag, ...) "{{{3
-    let rx = VikiRxFromCollection(b:vikiNamesOk)
+function! viki_anyword#Find(flag, ...) "{{{3
+    let rx = viki#RxFromCollection(b:vikiNamesOk)
     let i  = a:0 >= 1 ? a:1 : 0
-    call VikiFind(a:flag, i, rx)
+    call viki#Find(a:flag, i, rx)
 endfun
 
 

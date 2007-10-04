@@ -1,19 +1,19 @@
 " vikiLatex.vim -- viki add-on for LaTeX
-" @Author:      Thomas Link (samul AT web.de)
+" @Author:      Thomas Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     28-Jän-2004.
-" @Last Change: 2007-06-07.
-" @Revision:    0.178
+" @Last Change: 2007-10-04.
+" @Revision:    0.194
 
-if &cp || exists("s:loaded_vikiLatex")
+if &cp || exists('loaded_viki_latex')
     finish
 endif
-let s:loaded_vikiLatex = 1
+let loaded_viki_latex = 1
 
-fun! VikiSetupBufferLaTeX(state, ...)
+function! viki_latex#SetupBuffer(state, ...)
     let noMatch = ""
     let b:vikiNameSuffix = '.tex'
-    call VikiSetupBuffer(a:state, "sSic")
+    call viki_viki#SetupBuffer(a:state, "sSic")
     let b:vikiAnchorRx   = '\\label{%{ANCHOR}}'
     let b:vikiNameTypes  = substitute(b:vikiNameTypes, '\C[Sicx]', "", "g")
     let b:vikiLaTeXCommands = 'viki\|include\|input\|usepackage\|psfig\|includegraphics\|bibliography\|ref'
@@ -39,7 +39,7 @@ fun! VikiSetupBufferLaTeX(state, ...)
     endif
 endf
 
-fun! VikiLatexCheckFilename(filename, ...)
+function! viki_latex#CheckFilename(filename, ...)
     if a:filename != ""
         """ search in the current directory
         let i = 1
@@ -67,8 +67,8 @@ fun! VikiLatexCheckFilename(filename, ...)
 endfun
 
 
-fun! VikiCompleteSimpleNameDefLaTeX(def)
-    exec VikiSplitDef(a:def)
+function! viki_latex#CompleteSimpleNameDef(def)
+    exec viki#SplitDef(a:def)
     if v_name == g:vikiDefNil
         throw "Viki: Malformed command (no name): ". string(a:def)
     endif
@@ -77,36 +77,31 @@ fun! VikiCompleteSimpleNameDefLaTeX(def)
     let useSuffix = g:vikiDefSep
 
     if v_name == "input"
-        let v_dest = VikiLatexCheckFilename(v_dest, "", ".tex", ".sty")
+        let v_dest = viki_latex#CheckFilename(v_dest, "", ".tex", ".sty")
     elseif v_name == "usepackage"
-        let v_dest = VikiLatexCheckFilename(v_dest, ".sty")
+        let v_dest = viki_latex#CheckFilename(v_dest, ".sty")
     elseif v_name == "include"
-        let v_dest = VikiLatexCheckFilename(v_dest, ".tex")
+        let v_dest = viki_latex#CheckFilename(v_dest, ".tex")
     elseif v_name == "viki"
-        let v_dest = VikiLatexCheckFilename(v_dest, ".tex")
+        let v_dest = viki_latex#CheckFilename(v_dest, ".tex")
         let v_anchor = opts
     elseif v_name == "psfig"
         let f == matchstr(v_dest, "figure=\zs.\{-}\ze[,}]")
-        let v_dest = VikiLatexCheckFilename(v_dest, "")
+        let v_dest = viki_latex#CheckFilename(v_dest, "")
     elseif v_name == "includegraphics"
-        let v_dest = VikiLatexCheckFilename(v_dest, "", 
+        let v_dest = viki_latex#CheckFilename(v_dest, "", 
                     \ ".eps", ".ps", ".pdf", ".png", ".jpeg", ".jpg", ".gif", ".wmf")
     elseif v_name == "bibliography"
         if !exists('b:vikiMarkingInexistent')
             let bibs = split(v_dest, ",")
-            let n = tlib#InputList('si', "Select Bibliography", bibs)
-            if n > 0
-                let f      = bibs[n - 1]
-                let v_dest = VikiLatexCheckFilename(f, ".bib")
-            else
-                let v_dest = ""
-            endif
+            let f = tlib#input#List('s', "Select Bibliography", bibs)
+            let v_dest = empty(f) ? '' : viki_latex#CheckFilename(f, ".bib")
         endif
     elseif v_name == "ref"
         let v_anchor = v_dest
         let v_dest   = g:vikiSelfRef
     elseif exists("*VikiLaTeX_".v_name)
-        exe VikiLaTeX_{v_name}(v_dest, opts)
+        exec VikiLaTeX_{v_name}(v_dest, opts)
     else
         throw "Viki LaTeX: unsupported command: ". v_name
     endif
@@ -116,16 +111,16 @@ fun! VikiCompleteSimpleNameDefLaTeX(def)
             throw "Viki LaTeX: can't find: ". v_name ." ". string(a:def)
         endif
     else
-        return VikiMakeDef(v_name, v_dest, v_anchor, v_part, 'simple')
+        return viki#MakeDef(v_name, v_dest, v_anchor, v_part, 'simple')
     endif
 endfun
 
-fun! VikiMinorModeLaTeX(state)
-    let b:vikiFamily = "LaTeX"
-    call VikiMinorMode(a:state)
+function! viki_latex#MinorMode(state)
+    let b:vikiFamily = "latex"
+    call viki_viki#MinorMode(a:state)
 endf
 
-command! VikiMinorModeLaTeX call VikiMinorModeLaTeX(1)
+command! VikiMinorModeLaTeX call viki_latex#MinorMode(1)
 " au FileType tex let b:vikiFamily="LaTeX"
 
 " vim: ff=unix

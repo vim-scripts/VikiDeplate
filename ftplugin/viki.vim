@@ -1,9 +1,9 @@
 " viki.vim -- the viki ftplugin
-" @Author:      Thomas Link (samul AT web.de)
+" @Author:      Thomas Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 2007-08-26.
-" @Revision: 364
+" @Last Change: 2007-09-09.
+" @Revision: 396
 
 " if !g:vikiEnabled
 "     finish
@@ -52,8 +52,8 @@ let &define='^\s*\(#Def.\{-}id=\|#\(Fn\|Footnote\).\{-}\(:\|id=\)\|#VAR.\{-}\s\)
 
 " compiler deplate
 
-map <buffer> <silent> [[ :call VikiFindPrevHeading()<cr>
-map <buffer> <silent> ][ :call VikiFindNextHeading()<cr>
+map <buffer> <silent> [[ :call viki#FindPrevHeading()<cr>
+map <buffer> <silent> ][ :call viki#FindNextHeading()<cr>
 map <buffer> <silent> ]] ][
 map <buffer> <silent> [] [[
 
@@ -75,16 +75,27 @@ endif
 function! VikiFoldText() "{{{3
   let line = getline(v:foldstart)
   if synIDattr(synID(v:foldstart, 1, 1), 'name') =~ '^vikiFiles'
-      let line = fnamemodify(viki#VikiFilesGetFilename(line), ':h')
+      let line = fnamemodify(viki#FilesGetFilename(line), ':h')
   else
-      let context = v:foldstart + get(tlib#var#Get('vikiFoldsContext', 'wbg'), v:foldlevel, 0)
+      let ctxtlev = tlib#var#Get('vikiFoldsContext', 'wbg')
+      let ctxt    = get(ctxtlev, v:foldlevel, 0)
+      " TLogVAR ctxt
+      " TLogDBG type(ctxt)
+      if type(ctxt) == 3
+          let [ctxtbeg, ctxtend] = ctxt
+      else
+          let ctxtbeg = 1
+          let ctxtend = ctxt
+      end
       let line = matchstr(line, '^\s*\zs.*$')
-      for li in range(v:foldstart + 1, context)
+      for li in range(ctxtbeg, ctxtend)
+          let li = v:foldstart + li
           if li > v:foldend
               break
           endif
           let lp = matchstr(getline(li), '^\s*\zs.\{-}\ze\s*$')
           if !empty(lp)
+              let lp = substitute(lp, '\s\+', ' ', 'g')
               let line .= ' | '. lp
           endif
       endfor
@@ -101,11 +112,13 @@ function! s:VikiFolds() "{{{3
     elseif vikiFolds == 'DEFAULT'
         let vikiFolds = 'hf'
     endif
+    " TLogVAR vikiFolds
     return vikiFolds
 endf
 
 function! s:SetMaxLevel() "{{{3
     let pos = getpos('.')
+    " TLogVAR b:vikiHeadingStart
     let vikiHeadingRx = '\V\^'. b:vikiHeadingStart .'\+\ze\s'
     let b:vikiHeadingMaxLevel = 0
     exec 'keepjumps g/'. vikiHeadingRx .'/let l = matchend(getline("."), vikiHeadingRx) | if l > b:vikiHeadingMaxLevel | let b:vikiHeadingMaxLevel = l | endif'
@@ -113,23 +126,49 @@ function! s:SetMaxLevel() "{{{3
     call setpos('.', pos)
 endf
 
-if g:vikiFoldMethodVersion == 4
+if g:vikiFoldMethodVersion == 5
 
     function! VikiFoldLevel(lnum) "{{{3
+        " TLogVAR a:lnum
         let vikiFolds = s:VikiFolds()
-        if vikiFolds !~# '[hH]'
-            " TLogDBG 'no folds'
-            return
-        endif
-        let lt = getline(a:lnum)
-        " if lt !~ '\S'
-        "     return '='
-        " endif
         if vikiFolds =~# 'h'
+            " TLogVAR b:vikiHeadingStart
+            let lt = getline(a:lnum)
             let fh = matchend(lt, '\V\^'. b:vikiHeadingStart .'\+\ze\s')
             if fh != -1
-                " TLogVAR fh
+                " TLogVAR fh, b:vikiHeadingMaxLevel
                 if b:vikiHeadingMaxLevel = -1
+                    " TLogDBG 'SetMaxLevel'
+                    call s:SetMaxLevel()
+                endif
+                if fh > b:vikiHeadingMaxLevel
+                    let b:vikiHeadingMaxLevel = fh
+                endif
+                if vikiFolds =~# 'H'
+                    " TLogDBG 'inverse folds'
+                    let fh = b:vikiHeadingMaxLevel - fh + 1
+                endif
+                " TLogVAR fh, lt
+                return '>'.fh
+            endif
+            let body_level = indent(a:lnum) / &sw + 1
+            return b:vikiHeadingMaxLevel + body_level
+        endif
+    endf
+
+elseif g:vikiFoldMethodVersion == 4
+
+    function! VikiFoldLevel(lnum) "{{{3
+        " TLogVAR a:lnum
+        let vikiFolds = s:VikiFolds()
+        if vikiFolds =~# 'h'
+            " TLogVAR b:vikiHeadingStart
+            let lt = getline(a:lnum)
+            let fh = matchend(lt, '\V\^'. b:vikiHeadingStart .'\+\ze\s')
+            if fh != -1
+                " TLogVAR fh, b:vikiHeadingMaxLevel
+                if b:vikiHeadingMaxLevel = -1
+                    " TLogDBG 'SetMaxLevel'
                     call s:SetMaxLevel()
                 endif
                 if fh > b:vikiHeadingMaxLevel
@@ -144,10 +183,6 @@ if g:vikiFoldMethodVersion == 4
             endif
             return '='
         endif
-        " let li = indent(a:lnum)
-        " let tf = b:vikiHeadingMaxLevel + 1 + (li / &sw)
-        " " TLogVAR tf
-        " return tf
     endf
 
 elseif g:vikiFoldMethodVersion == 3
