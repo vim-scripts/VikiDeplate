@@ -4,7 +4,7 @@
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
 " @Last Change: 2007-10-04.
-" @Revision:    0.278
+" @Revision:    0.284
 
 if &cp || exists("loaded_viki_auto") "{{{2
     finish
@@ -254,7 +254,7 @@ function! s:MarkInexistent(line1, line2, ...) "{{{3
         let pp = 0
         let ll = 0
         let cc = 0
-        keepjumps let li = search(rx, 'Wc')
+        keepjumps let li = search(rx, 'Wc', max)
         let co = col('.')
         while li != 0 && !(ll == li && cc == co) && li >= min && li <= max && co <= maxcol
             let lic = line('.')
@@ -325,7 +325,7 @@ function! s:MarkInexistent(line1, line2, ...) "{{{3
                 endif
                 unlet! def
             endif
-            keepjumps let li = search(rx, 'W')
+            keepjumps let li = search(rx, 'W', max)
             let co = col('.')
         endwh
         if b:vikiNamesOk0 != b:vikiNamesOk || b:vikiNamesNull0 != b:vikiNamesNull
@@ -752,8 +752,9 @@ let s:hookcursormoved_oldpos = []
 function! viki#HookCheckPreviousPosition(mode) "{{{3
     " if a:mode == 'n'
     if s:hookcursormoved_oldpos != b:hookcursormoved_oldpos
-        call setpos('.', b:hookcursormoved_oldpos)
-        keepjumps keepmarks call s:MarkInexistentInLine()
+        " call setpos('.', b:hookcursormoved_oldpos)
+        " keepjumps keepmarks call s:MarkInexistentInLine()
+        keepjumps keepmarks call s:MarkInexistent(b:hookcursormoved_oldpos[1], b:hookcursormoved_oldpos[1])
         let s:hookcursormoved_oldpos = b:hookcursormoved_oldpos
     endif
 endf

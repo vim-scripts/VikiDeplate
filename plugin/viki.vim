@@ -3,7 +3,7 @@
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
 " @Last Change: 2007-10-04.
-" @Revision: 3.0.2491
+" @Revision: 3.1.2495
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -38,7 +38,7 @@ if !exists('loaded_tlib') || loaded_tlib < 15
     echoerr 'tlib >= 0.15 is required'
     finish
 endif
-let loaded_viki = 300
+let loaded_viki = 301
 
 " This is what we consider nil, in the absence of nil in vimscript
 let g:vikiDefNil  = ''
@@ -224,7 +224,10 @@ if !exists("g:vikiMapQParaKeys")    | let g:vikiMapQParaKeys = "\n"      | endif
 " Install hooks for these conditions (requires hookcursormoved to be 
 " installed)
 " "linechange" could cause some slowdown.
-if !exists("g:vikiHCM")             | let g:vikiHCM = ['linechange', 'syntaxchange'] | endif "{{{2
+if !exists("g:vikiHCM") "{{{2
+    let g:vikiHCM = ['linechange', 'syntaxchange']
+    " let g:vikiHCM = ['syntaxchange']
+endif
 
 " Check the viki name before inserting this character
 if !exists("g:vikiMapBeforeKeys")   | let g:vikiMapBeforeKeys = ']'      | endif "{{{2
@@ -932,6 +935,10 @@ inexistent sources. If this plugin causes difficulties, please tell me
 and temporarily remove it.
 - Use matchlist() instead of substitute(), which could speed things up a 
 little.
+
+3.1
+- Slightly improved performance of s:MarkInexistent() and 
+viki#HookCheckPreviousPosition().
 
 
 " vim: ff=unix
