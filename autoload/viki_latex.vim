@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     28-Jän-2004.
-" @Last Change: 2007-10-04.
-" @Revision:    0.194
+" @Last Change: 2007-10-05.
+" @Revision:    0.195
 
 if &cp || exists('loaded_viki_latex')
     finish
@@ -120,7 +120,6 @@ function! viki_latex#MinorMode(state)
     call viki_viki#MinorMode(a:state)
 endf
 
-command! VikiMinorModeLaTeX call viki_latex#MinorMode(1)
 " au FileType tex let b:vikiFamily="LaTeX"
 
 " vim: ff=unix

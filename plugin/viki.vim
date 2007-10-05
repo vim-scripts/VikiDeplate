@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2007-10-04.
-" @Revision: 3.1.2495
+" @Last Change: 2007-10-05.
+" @Revision: 3.2.2502
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -38,7 +38,7 @@ if !exists('loaded_tlib') || loaded_tlib < 15
     echoerr 'tlib >= 0.15 is required'
     finish
 endif
-let loaded_viki = 301
+let loaded_viki = 302
 
 " This is what we consider nil, in the absence of nil in vimscript
 let g:vikiDefNil  = ''
@@ -482,6 +482,10 @@ command! -nargs=* -range=% VikiMarkInexistent call viki#MarkInexistentInRange(<l
 
 command! -nargs=? -bar VikiMinorMode call viki#DispatchOnFamily('MinorMode', empty(<q-args>) && exists('b:vikiFamily') ? b:vikiFamily : <q-args>, 1)
 command! -nargs=? -bar VikiMinorModeMaybe echom "Deprecated command: VikiMinorModeMaybe" | VikiMinorMode <q-args>
+command! VikiMinorModeViki call viki_viki#MinorMode(1)
+command! VikiMinorModeLaTeX call viki_latex#MinorMode(1)
+command! VikiMinorModeAnyWord call viki_anyword#MinorMode(1)
+
 " this requires imaps to be installed
 command! -range VikiQuote :call VEnclose("[-", "-]", "[-", "-]")
 
@@ -939,6 +943,12 @@ little.
 3.1
 - Slightly improved performance of s:MarkInexistent() and 
 viki#HookCheckPreviousPosition().
+
+3.2
+- viki_viki.vim: Wrong value for b:vikiCmdDestIdx and 
+b:vikiCmdAnchorIdx.
+- Moved :VikiMinorModeViki, :VikiMinorModeLaTeX, and 
+:VikiMinorModeAnyWord to plugin/viki.vim
 
 
 " vim: ff=unix

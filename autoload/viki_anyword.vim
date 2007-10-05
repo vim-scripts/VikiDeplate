@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (mailto:micathom AT gmail com?subject=vim-vikiAnyWord)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     04-Apr-2005.
-" @Last Change: 2007-10-04.
-" @Revision:    0.30
+" @Last Change: 2007-10-05.
+" @Revision:    0.31
 
 if &cp || exists('loaded_viki_anyword')
     finish
@@ -15,7 +15,6 @@ function! viki_anyword#MinorMode(state) "{{{3
     let b:vikiFamily = 'anyword'
     call viki_viki#MinorMode(a:state)
 endfun
-command! VikiMinorModeAnyWord call viki_anyword#MinorMode(1)
 
 function! viki_anyword#SetupBuffer(state, ...) "{{{3
     let dontSetup = a:0 > 0 ? a:1 : ''

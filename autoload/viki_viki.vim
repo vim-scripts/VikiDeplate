@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-09-03.
-" @Last Change: 2007-10-04.
-" @Revision:    0.0.58
+" @Last Change: 2007-10-05.
+" @Revision:    0.0.70
 
 if &cp || exists("loaded_viki_viki")
     finish
@@ -153,8 +153,8 @@ function! viki_viki#SetupBuffer(state, ...) "{{{3
         let b:vikiCmdRx        = '\({'. vikimacros .'\|#'. vikicmd .'\)\(.\{-}\):\s*\(.\{-}\)\($\|}\)'
         let b:vikiCmdSimpleRx  = '\({'. vikimacros .'\|#'. vikicmd .'\).\{-}\($\|}\)'
         let b:vikiCmdNameIdx   = 1
-        let b:vikiCmdDestIdx   = 3
-        let b:vikiCmdAnchorIdx = 2
+        let b:vikiCmdDestIdx   = 5
+        let b:vikiCmdAnchorIdx = 4
         let b:vikiCmdCompound = 'let erx="'. escape(b:vikiCmdRx, '\"')
                     \ .'" | let nameIdx='. b:vikiCmdNameIdx
                     \ .' | let destIdx='. b:vikiCmdDestIdx
@@ -204,7 +204,7 @@ function! viki_viki#SetupBuffer(state, ...) "{{{3
         if exists('b:vikiNameSuffix') && b:vikiNameSuffix != '' && b:vikiNameSuffix != g:vikiNameSuffix
             exec 'setlocal suffixesadd+='. b:vikiNameSuffix
         endif
-        if exists('g:loaded_hookcursormoved')
+        if exists('g:loaded_hookcursormoved') && exists('b:vikiMarkInexistent') && b:vikiMarkInexistent
             for cond in g:vikiHCM
                 call hookcursormoved#Register('b', cond, function('viki#HookCheckPreviousPosition'))
             endfor
