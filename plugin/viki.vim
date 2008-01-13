@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2007-12-23.
-" @Revision: 3.4.2536
+" @Last Change: 2008-01-10.
+" @Revision: 3.5.2539
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -38,7 +38,7 @@ if !exists('loaded_tlib') || loaded_tlib < 15
     echoerr 'tlib >= 0.15 is required'
     finish
 endif
-let loaded_viki = 304
+let loaded_viki = 305
 
 " This is what we consider nil, in the absence of nil in vimscript
 let g:vikiDefNil  = ''
@@ -967,6 +967,11 @@ b:vikiCmdAnchorIdx.
 it can be included from other syntax files.
 - Cascade menu of intervikis
 - FIX: don't register viki names as known/unknown more than once
+
+3.5
+- Don't try to append an empty anchor to an url (Thanks RM Schmid).
+- New variable g:viki_interviki to define intervikis in ~/.vimrc.
+- Minor updates to the help file.
 
 
 " vim: ff=unix
