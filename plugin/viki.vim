@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2008-01-14.
-" @Revision: 3.6.2542
+" @Last Change: 2008-01-15.
+" @Revision: 3.7.2548
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -38,7 +38,7 @@ if !exists('loaded_tlib') || loaded_tlib < 15
     echoerr 'tlib >= 0.15 is required'
     finish
 endif
-let loaded_viki = 306
+let loaded_viki = 307
 
 " This is what we consider nil, in the absence of nil in vimscript
 let g:vikiDefNil  = ''
@@ -981,6 +981,11 @@ it can be included from other syntax files.
 
 3.6
 - Forgot to define a default value for g:viki_intervikis.
+
+3.7
+- In a file that doesn't contain headings, return 0 instead of '=' as 
+default value if g:vikiFoldMethodVersion == 4.
+- FIX: "=" in if expressions in certain versions of VikiFoldLevel()
 
 
 " vim: ff=unix
