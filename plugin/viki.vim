@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2008-01-15.
-" @Revision: 3.7.2548
+" @Last Change: 2008-06-22.
+" @Revision: 3.7.2563
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -34,11 +34,14 @@
 if &cp || exists("loaded_viki") "{{{2
     finish
 endif
-if !exists('loaded_tlib') || loaded_tlib < 15
-    echoerr 'tlib >= 0.15 is required'
-    finish
+if !exists('g:loaded_tlib') || g:loaded_tlib < 15
+    runtime plugin/02tlib.vim
+    if !exists('g:loaded_tlib') || g:loaded_tlib < 15
+        echoerr 'tlib >= 0.15 is required'
+        finish
+    endif
 endif
-let loaded_viki = 307
+let loaded_viki = 308
 
 " This is what we consider nil, in the absence of nil in vimscript
 let g:vikiDefNil  = ''
@@ -107,6 +110,7 @@ if !exists("g:vikiSpecialFiles") "{{{2
                 \ 'au',
                 \ 'avi',
                 \ 'bmp',
+                \ 'dia',
                 \ 'doc',
                 \ 'dvi',
                 \ 'eps',
@@ -369,7 +373,7 @@ if !exists('*VikiOpenSpecialFile') "{{{2
         if prot != ''
             let openFile = viki#SubstituteArgs(prot, 'FILE', a:file)
             " TLogVAR openFile
-            exec openFile
+            call viki#ExecExternal(openFile)
         else
             throw 'Viki: Please define g:vikiOpenFileWith_'. proto .' or g:vikiOpenFileWith_ANY!'
         endif
@@ -445,7 +449,7 @@ if !exists("*VikiOpenSpecialProtocol") "{{{2
             exec 'let openURL = '. prot
             let openURL = viki#SubstituteArgs(openURL, 'URL', a:url)
             " TLogVAR openURL
-            exec openURL
+            call viki#ExecExternal(openURL)
         else
             throw 'Viki: Please define g:vikiOpenUrlWith_'. proto .' or g:vikiOpenUrlWith_ANY!'
         endif
@@ -987,5 +991,13 @@ it can be included from other syntax files.
 default value if g:vikiFoldMethodVersion == 4.
 - FIX: "=" in if expressions in certain versions of VikiFoldLevel()
 
+3.8
+- FIX: viki#MarkInexistentInElement() for pre 7.0.009 vim (thanks to M 
+Brandmeyer)
+- FIX: Make sure tlib is loaded even if it is installed in a different 
+rtp-directory (thanks to M Brandmeyer)
+- Added dia to g:vikiSpecialFiles
+- FIX: Scrambled window when opening an url from vim (thanks A Moell)
 
+"
 " vim: ff=unix

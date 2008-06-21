@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 2008-01-14.
-" @Revision: 403
+" @Last Change: 2008-02-14.
+" @Revision: 404
 
 " if !g:vikiEnabled
 "     finish
@@ -34,6 +34,7 @@ setlocal foldtext=VikiFoldText()
 setlocal expandtab
 " setlocal iskeyword+=#,{
 setlocal iskeyword+={
+setlocal iskeyword-=_
 
 let &include='\(^\s*#INC.\{-}\(\sfile=\|:\)\)'
 " let &include='\(^\s*#INC.\{-}\(\sfile=\|:\)\|\[\[\)'

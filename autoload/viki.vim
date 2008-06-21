@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
-" @Last Change: 2008-01-10.
-" @Revision:    0.457
+" @Last Change: 2008-06-22.
+" @Revision:    0.460
 
 if &cp || exists("loaded_viki_auto") "{{{2
     finish
@@ -415,7 +415,7 @@ if v:version == 700 && !has('patch8')
         let lr = &lazyredraw
         set lazyredraw
         call viki#SaveCursorPosition()
-        let kpk = s:SID() . "VikiMarkInexistentIn" . a:elt
+        let kpk = s:SID() . "MarkInexistentIn" . a:elt
         call {kpk}()
         call viki#RestoreCursorPosition()
         call s:ResetSavedCursorPosition()
@@ -2104,6 +2104,13 @@ fun! viki#GetIndent()
     endtry
 endf
 
+function! viki#ExecExternal(cmd) "{{{3
+    exec a:cmd
+    if !has("gui_running")
+        " Scrambled window with vim
+        redraw!
+    endif
+endf
 
 
 """ #Files related stuff {{{1

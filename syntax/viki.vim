@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 2007-11-28.
-" @Revision: 0.855
+" @Last Change: 2008-04-17.
+" @Revision: 0.858
 
 if !g:vikiEnabled
     finish
@@ -166,6 +166,7 @@ if g:vikiHighlightMath == 'latex'
     syn region vikiTexFormula matchgroup=Comment
                 \ start=/\$/ end=/\$/
                 \ contains=@texmathMath
+    syn sync match vikiTexFormula grouphere NONE /^\s*$/
 endif
 
 syn region vikiTexRegion matchgroup=vikiMacroDelim
