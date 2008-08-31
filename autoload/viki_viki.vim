@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-09-03.
-" @Last Change: 2007-11-15.
-" @Revision:    0.0.95
+" @Last Change: 2008-08-28.
+" @Revision:    0.0.107
 
 if &cp || exists("loaded_viki_viki")
     finish
@@ -44,6 +44,8 @@ function! viki_viki#SetupBuffer(state, ...) "{{{3
     " call viki#SetBufferVar("vikiTextstylesVer")
     call viki#SetBufferVar("vikiLowerCharacters")
     call viki#SetBufferVar("vikiUpperCharacters")
+    call viki#SetBufferVar("vikiAnchorNameRx")
+    call viki#SetBufferVar("vikiUrlRestRx")
     call viki#SetBufferVar("vikiFeedbackMin")
 
     if a:state == 1
@@ -69,8 +71,11 @@ function! viki_viki#SetupBuffer(state, ...) "{{{3
     let b:vikiQuotedSelfRef        = "^". b:vikiSimpleNameQuoteBeg . b:vikiSimpleNameQuoteEnd ."$"
     let b:vikiQuotedRef            = "^". b:vikiSimpleNameQuoteBeg .'.\+'. b:vikiSimpleNameQuoteEnd ."$"
 
-    let b:vikiAnchorNameRx         = '['. b:vikiLowerCharacters .']['. 
-                \ b:vikiLowerCharacters . b:vikiUpperCharacters .'_0-9]*'
+    if empty(b:vikiAnchorNameRx)
+        let b:vikiAnchorNameRx         = '['. b:vikiLowerCharacters .']['. 
+                    \ b:vikiLowerCharacters . b:vikiUpperCharacters .'_0-9]*'
+    endif
+    " TLogVAR b:vikiAnchorNameRx
     
     let interviki = '\<['. b:vikiUpperCharacters .']\+::'
 
@@ -128,9 +133,9 @@ function! viki_viki#SetupBuffer(state, ...) "{{{3
     if viki#IsSupportedType("u") && !(dontSetup =~# "u")
         let urlChars = 'A-Za-z0-9.,:%?=&_~@$/|+-'
         let b:vikiUrlRx = '\<\(\('.b:vikiSpecialProtocols.'\):['. urlChars .']\+\)'.
-                    \ '\(#\([A-Za-z0-9]*\)\)\?'
+                    \ '\(#\('. b:vikiAnchorNameRx .'\)\)\?'. b:vikiUrlRestRx
         let b:vikiUrlSimpleRx = '\<\('. b:vikiSpecialProtocols .'\):['. urlChars .']\+'.
-                    \ '\(#[A-Za-z0-9]*\)\?'
+                    \ '\(#'. b:vikiAnchorNameRx .'\)\?'. b:vikiUrlRestRx
         let b:vikiUrlNameIdx   = 0
         let b:vikiUrlDestIdx   = 1
         let b:vikiUrlAnchorIdx = 4
@@ -194,7 +199,9 @@ function! viki_viki#SetupBuffer(state, ...) "{{{3
 
     let b:vikiInexistentHighlight = "vikiInexistentLink"
 
+    " TLogVAR a:state
     if a:state == 2
+        " TLogVAR g:vikiAutoMarks
         if g:vikiAutoMarks
             call viki#SetAnchorMarks()
         endif

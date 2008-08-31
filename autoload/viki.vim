@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
-" @Last Change: 2008-06-22.
-" @Revision:    0.460
+" @Last Change: 2008-08-28.
+" @Revision:    0.475
 
 if &cp || exists("loaded_viki_auto") "{{{2
     finish
@@ -983,7 +983,7 @@ function! viki#SubstituteArgs(str, ...) "{{{3
         if lab == ''
             let default = val
         else
-            let rv0 = substitute(rv, '\C\(^\|[^%]\)\zs%{'. lab .'}', escape(val, '\&'), "g")
+            let rv0 = substitute(rv, '\C\(^\|[^%]\)\zs%{'. lab .'}', escape(val, '\~&'), 'g')
             if rv != rv0
                 let done = 1
                 let rv = rv0
@@ -1052,9 +1052,10 @@ function! viki#SetAnchorMarks() "{{{3
     let pos = getpos(".")
     " TLogVAR pos
     let sr  = @/
-    let anchorRx = viki#GetAnchorRx('m\(\[a-zA-Z]\)\s\*\$')
+    let anchorRx = viki#GetAnchorRx('m\zs\[a-zA-Z]\ze\s\*\$')
+    " TLogVAR anchorRx
     " exec 'silent keepjumps g /'. anchorRx .'/exec "norm! m". substitute(getline("."), anchorRx, ''\2'', "")'
-    exec 'silent keepjumps g /'. anchorRx .'/exec "norm! m". matchlist(getline("."), anchorRx)[1]'
+    exec 'silent keepjumps g /'. anchorRx .'/exec "norm! m". matchstr(getline("."), anchorRx)'
     let @/ = sr
     " TLogVAR pos
     call setpos('.', pos)
@@ -1286,7 +1287,9 @@ function! s:OpenLink(dest, anchor, winNr)
     " TLogVAR a:dest, a:anchor, a:winNr
     try
         if viki#IsSpecialProtocol(a:dest)
-            call VikiOpenSpecialProtocol(viki#MakeUrl(a:dest, a:anchor))
+            let url = viki#MakeUrl(a:dest, a:anchor)
+            " TLogVAR url
+            call VikiOpenSpecialProtocol(url)
         elseif viki#IsSpecialFile(a:dest)
             call VikiOpenSpecialFile(a:dest)
         elseif isdirectory(a:dest)
@@ -2105,6 +2108,7 @@ fun! viki#GetIndent()
 endf
 
 function! viki#ExecExternal(cmd) "{{{3
+    " TLogVAR a:cmd
     exec a:cmd
     if !has("gui_running")
         " Scrambled window with vim
@@ -2212,6 +2216,7 @@ endf
 
 fun! viki#DirListing(lhs, lhb, indent) "{{{3
     let args = s:GetRegionArgs(a:lhs, a:lhb - 1)
+    " TLogVAR args
     let patt = get(args, 'glob', '')
     " TLogVAR patt
     if empty(patt)
@@ -2316,17 +2321,21 @@ fun! s:GetRegionArgs(ls, le) "{{{3
     " let p = getpos('.')
     try
         let t = s:GetBrokenLine(a:ls, a:le)
+        " TLogVAR t
         let t = matchstr(t, '^\s*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\zs.\{-}\ze<<$')
+        " TLogVAR t
         let args = {}
         let rx = '^\s*\(\(\S\{-}\)=\("\(\(\"\|.\{-}\)\{-}\)"\|\(\(\S\+\|\\ \)\+\)\)\|\(\w\)\+!\)\s*'
         let s  = 0
         let sm = len(t)
         while s < sm
             let m = matchlist(t, rx, s)
+            " TLogVAR m
             if empty(m)
                 echoerr "Viki: Can't parse argument list: ". t
             else
                 let key = m[2]
+                " TLogVAR key
                 if !empty(key)
                     let val = empty(m[4]) ? m[6] : m[4]
                     if val =~ '^".\{-}"'

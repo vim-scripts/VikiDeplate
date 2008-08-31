@@ -2,8 +2,8 @@
 " @Author:      Thomas Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 2008-04-17.
-" @Revision: 0.858
+" @Last Change: 2008-08-20.
+" @Revision: 0.862
 
 if !g:vikiEnabled
     finish
@@ -93,6 +93,7 @@ syn match vikiPriorityListTodoE /^[[:blank:]]\+\zs#\(T: \+.\{-}E.\{-}:\|\d*E\d*\
 syn match vikiPriorityListTodoF /^[[:blank:]]\+\zs#\(T: \+.\{-}F.\{-}:\|\d*F\d*\( \+\(_\|[0-9%-]\+\)\)\?\)\( \+\[[^[].\{-}\]\)\?\ze /
 
 syn match vikiPriorityListDoneGen /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}\u.\{-}:\|\(T: \+\)\?\d*\u\d* \+x[0-9%-]*\):\? .*/
+syn match vikiPriorityListDoneX /^[[:blank:]]\+\zs#X\d\?\s.*/
 syn match vikiPriorityListDoneA /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}A.\{-}:\|\(T: \+\)\?\d*A\d* \+x[0-9%-]*\):\? .*/
 syn match vikiPriorityListDoneB /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}B.\{-}:\|\(T: \+\)\?\d*B\d* \+x[0-9%-]*\):\? .*/
 syn match vikiPriorityListDoneC /^[[:blank:]]\+\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}C.\{-}:\|\(T: \+\)\?\d*C\d* \+x[0-9%-]*\):\? .*/
@@ -164,7 +165,7 @@ syn region vikiFilesRegion matchgroup=vikiMacroDelim
 
 if g:vikiHighlightMath == 'latex'
     syn region vikiTexFormula matchgroup=Comment
-                \ start=/\$/ end=/\$/
+                \ start=/\z(\$\$\?\)/ end=/\z1/
                 \ contains=@texmathMath
     syn sync match vikiTexFormula grouphere NONE /^\s*$/
 endif
@@ -268,6 +269,7 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   HiLink vikiPriorityListDoneE Comment
   HiLink vikiPriorityListDoneF Comment
   HiLink vikiPriorityListDoneGen Comment
+  HiLink vikiPriorityListDoneX Comment
   
   exe "hi vikiTableRowSep term=bold cterm=bold gui=bold ctermbg=". s:cm2 ."Grey guibg=". s:cm2 ."Grey"
   
