@@ -1,10 +1,10 @@
 " viki.vim
-" @Author:      Thomas Link (micathom AT gmail com?subject=vim-viki)
+" @Author:      Tom Link (micathom AT gmail com?subject=vim-viki)
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
-" @Last Change: 2008-08-28.
-" @Revision:    0.475
+" @Last Change: 2009-02-15.
+" @Revision:    0.521
 
 if &cp || exists("loaded_viki_auto") "{{{2
     finish
@@ -62,7 +62,11 @@ function! viki#Define(name, prefix, ...) "{{{3
     end
     " let vname = escape(vname, ' \%#')
     " exec 'command! -bang -nargs=? -complete=customlist,viki#EditComplete '. a:name .' call viki#Edit(escape(empty(<q-args>) ?'. string(vname) .' : <q-args>, "#"), "<bang>")'
-    exec 'command! -bang -nargs=? -complete=customlist,viki#EditComplete '. a:name .' call viki#Edit(empty(<q-args>) ?'. string(vname) .' : viki#InterEditArg('. string(a:name) .', <q-args>), "<bang>")'
+    if !exists(':'+ a:name)
+        exec 'command -bang -nargs=? -complete=customlist,viki#EditComplete '. a:name .' call viki#Edit(empty(<q-args>) ? '. string(vname) .' : viki#InterEditArg('. string(a:name) .', <q-args>), "<bang>")'
+    else
+        echom "Viki: Command already exists. Cannot define a command for "+ a:name
+    endif
     if g:vikiMenuPrefix != ''
         if g:vikiMenuLevel > 0
             let name = [ a:name[0 : g:vikiMenuLevel - 1] .'&'. a:name[g:vikiMenuLevel : -1] ]
@@ -336,7 +340,7 @@ function! s:MarkInexistent(line1, line2, ...) "{{{3
                             let partx = escape(v_part, "'\"\\/")
                         endif
                         " elseif v_part =~ b:vikiCmdSimpleRx
-                        " <+TBD+>
+                        " <+TODO+>
                     else
                         " TLogDBG "else3 => 0"
                         let check = 0
@@ -1900,8 +1904,10 @@ endf
 " Command line completion of :VikiEdit
 function! viki#EditComplete(ArgLead, CmdLine, CursorPos) "{{{3
     " TLogVAR a:ArgLead, a:CmdLine, a:CursorPos
-    let arglead = a:ArgLead
-    let ii = matchstr(a:CmdLine, '^\s*\(\d*\(verb\|debug\|sil\|sp\|vert\|tab\)\w\+!\?\s\+\)*\zs\(\u\+\)\ze\s')
+    " let arglead = a:ArgLead
+    let rx_pre = '^\s*\(\d*\(verb\|debug\|sil\|sp\|vert\|tab\)\w\+!\?\s\+\)*'
+    let arglead = matchstr(a:CmdLine, rx_pre .'\(\u\+\)\s\zs.*')
+    let ii = matchstr(a:CmdLine, rx_pre .'\zs\(\u\+\)\ze\s')
     " TLogVAR ii
     if !empty(ii) && arglead !~ '::'
         let arglead = ii.'::'.arglead
@@ -1927,6 +1933,7 @@ function! viki#EditComplete(ArgLead, CmdLine, CursorPos) "{{{3
         " TLogVAR f,d,r
         let d  = substitute(d, '\', '/', 'g')
         let rv = split(glob(d), '\n')
+        " call map(rv, 'escape(v:val, " ")')
         " TLogVAR d,rv
         if sfx != ''
             call filter(rv, 'isdirectory(v:val) || ".". fnamemodify(v:val, ":e") == sfx')
@@ -1943,6 +1950,8 @@ function! viki#EditComplete(ArgLead, CmdLine, CursorPos) "{{{3
         " TLogVAR rv
         call map(rv, 's:EditCompleteAgent('. string(i) .', v:val, v:val)')
         " TLogVAR rv
+        " call map(rv, 'escape(v:val, " ")')
+        " TLogVAR rv
         if arglead == ''
             let rv += s:InterVikis
         else
@@ -1950,6 +1959,7 @@ function! viki#EditComplete(ArgLead, CmdLine, CursorPos) "{{{3
         endif
     endif
     " TLogVAR rv
+    " call map(rv, 'substitute(v:val, ''^\(.\{-}\s\ze\S*$'', "", "")')
     " call map(rv, 'escape(v:val, "%# ")')
     return rv
 endf
@@ -1980,6 +1990,7 @@ fun! viki#GetIndent()
     let lr = &lazyredraw
     set lazyredraw
     try
+        let cnum = v:lnum
         " Find a non-blank line above the current line.
         let lnum = prevnonblank(v:lnum - 1)
 
@@ -1996,10 +2007,11 @@ fun! viki#GetIndent()
         " end
 
         let line = getline(lnum)      " last line
+        " TLogVAR lnum, ind, line
         
-        let cnum  = v:lnum
         let cind  = indent(cnum)
         let cline = getline(cnum)
+        " TLogVAR v:lnum, cnum, cind, cline
         
         " Do not change indentation in regions
         if viki#IsInRegion(cnum)
@@ -2035,7 +2047,7 @@ fun! viki#GetIndent()
 
             let markRx = '^\s\+\([#?!+]\)\1\{2,2}\s\+'
             let listRx = '^\s\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\s\+'
-            let priRx  = '^\s\+#[A-F]\d\? \+\([x_0-9%-]\+ \+\)\?'
+            let priRx  = '^\s\+#[A-Z]\d\? \+\([x_0-9%-]\+ \+\)\?'
             let descRx = '^\s\+.\{-1,}\s::\s\+'
             
             let clMark = matchend(cline, markRx)
@@ -2086,7 +2098,7 @@ fun! viki#GetIndent()
                     endif
                 endif
 
-                " TLogVAR cind, ind, rv
+                " TLogVAR cind, ind
                 if cind < ind
                     let rv = (cind / &sw) * &sw
                     return rv

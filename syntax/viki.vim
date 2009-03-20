@@ -1,9 +1,9 @@
 " viki.vim -- the viki syntax file
-" @Author:      Thomas Link (micathom AT gmail com?subject=vim)
+" @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 2008-08-20.
-" @Revision: 0.862
+" @Last Change: 2009-02-15.
+" @Revision: 0.864
 
 if !g:vikiEnabled
     finish
@@ -141,10 +141,10 @@ syn region vikiRegion matchgroup=vikiMacroDelim
             \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\(\\\n\|.\)\{-}<<\z(.*\)$/ 
             \ end=/^[[:blank:]]*\z1[[:blank:]]*$/ 
             \ contains=@vikiText,vikiRegionNames
-syn region vikiRegionWEnd matchgroup=vikiMacroDelim 
-            \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\(\\\n\|.\)\{-}:[[:blank:]]*$/ 
-            \ end=/^[[:blank:]]*#End[[:blank:]]*$/ 
-            \ contains=@vikiText,vikiRegionNames
+" syn region vikiRegionWEnd matchgroup=vikiMacroDelim 
+"             \ start=/^[[:blank:]]*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\(\\\n\|.\)\{-}:[[:blank:]]*$/ 
+"             \ end=/^[[:blank:]]*#End[[:blank:]]*$/ 
+"             \ contains=@vikiText,vikiRegionNames
 syn region vikiRegionAlt matchgroup=vikiMacroDelim 
             \ start=/^[[:blank:]]*\z(=\{4,}\)[[:blank:]]*\([A-Z][a-z]*\>\|!!!\)\(\\\n\|.\)\{-}$/ 
             \ end=/^[[:blank:]]*\z1\([[:blank:]].*\)\?$/ 

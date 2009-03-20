@@ -484,7 +484,7 @@ Textstyles~
 
     __emphasized__, ''typewriter''
 
-<   NOTE: There must not by a whitespace after the opening mark.
+<   NOTE: There must not be a whitespace after the opening mark.
 
     NOTE: For the word styles, there must be a non-word character (|/\W|) 
     before the opening mark, i.e. a__b__c will be highlighted as normal text -- 

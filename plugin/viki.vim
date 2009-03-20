@@ -1,9 +1,9 @@
 " Viki.vim -- Some kind of personal wiki for Vim
-" @Author:      Thomas Link (micathom AT gmail com?subject=vim)
+" @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2008-08-28.
-" @Revision:    2610
+" @Last Change: 2009-03-20.
+" @Revision:    2627
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -41,7 +41,7 @@ if !exists('g:loaded_tlib') || g:loaded_tlib < 15
         finish
     endif
 endif
-let loaded_viki = 310
+let loaded_viki = 311
 
 " This is what we consider nil, in the absence of nil in vimscript
 let g:vikiDefNil  = ''
@@ -189,7 +189,7 @@ endif
 " If non-nil, use the parent document's suffix.
 if !exists("g:vikiUseParentSuffix") | let g:vikiUseParentSuffix = 0      | endif "{{{2
 
-" Default file suffix.
+" Default file suffix (including the optional period, e.g. '.txt').
 if !exists("g:vikiNameSuffix")      | let g:vikiNameSuffix = ""          | endif "{{{2
 
 " Prefix for anchors
@@ -362,7 +362,9 @@ if !exists("g:vikiOpenFileWith_ANY") "{{{2
     if exists('g:netrw_browsex_viewer')
         let g:vikiOpenFileWith_ANY = "exec 'silent !'. g:netrw_browsex_viewer .' '. shellescape('%{FILE}')"
     elseif has("win32") || has("win16") || has("win64")
-        let g:vikiOpenFileWith_ANY = "exec 'silent !cmd /c start '. shellescape('%{FILE}')"
+        let g:vikiOpenFileWith_ANY = "exec 'silent ! start \"\" '. shellescape('%{FILE}')"
+    elseif has("mac")
+        let g:vikiOpenFileWith_ANY = "exec 'silent !open '. shellescape('%{FILE}')"
     elseif $GNOME_DESKTOP_SESSION_ID != ""
         let g:vikiOpenFileWith_ANY = "exec 'silent !gnome-open '. shellescape('%{FILE}')"
     elseif $KDEDIR != ""
@@ -443,6 +445,8 @@ if !exists("g:vikiOpenUrlWith_ANY") "{{{2
     " let g:vikiOpenUrlWith_ANY = "exec 'silent !". g:netrw_browsex_viewer ." '. escape('%{URL}', ' &!%')"
     if has("win32")
         let g:vikiOpenUrlWith_ANY = "exec 'silent !rundll32 url.dll,FileProtocolHandler '. shellescape('%{URL}')"
+    elseif has("mac")
+        let g:vikiOpenUrlWith_ANY = "exec 'silent !open '. escape('%{URL}', ' &!%')"
     elseif $GNOME_DESKTOP_SESSION_ID != ""
         let g:vikiOpenUrlWith_ANY = "exec 'silent !gnome-open '. shellescape('%{URL}')"
     elseif $KDEDIR != ""
@@ -1025,5 +1029,12 @@ rtp-directory (thanks to M Brandmeyer)
 - FIX: automatically set marks (#m? type of anchors)
 - Anchor regexp can be configured via g:vikiAnchorNameRx
 
+3.11
+- Disabled regions' #END-syntax
+- Don't define interviki commands if a command of the same name already 
+exists.
+- Default values for g:vikiOpenUrlWith_ANY and g:vikiOpenFileWith_ANY on 
+Macs (thanks mboniou)
+- Correct default value for g:vikiOpenFileWith_ANY @ Windows
 
 " vim: ff=unix
