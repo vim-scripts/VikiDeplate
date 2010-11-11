@@ -2,8 +2,8 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2010-03-31.
-" @Revision:    2689
+" @Last Change: 2010-09-14.
+" @Revision:    2705
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -33,22 +33,17 @@
 if &cp || exists("loaded_viki") "{{{2
     finish
 endif
-if !exists('g:loaded_tlib') || g:loaded_tlib < 32
+if !exists('g:loaded_tlib') || g:loaded_tlib < 39
     runtime plugin/02tlib.vim
-    if !exists('g:loaded_tlib') || g:loaded_tlib < 32
-        echoerr 'tlib >= 0.32 is required'
+    if !exists('g:loaded_tlib') || g:loaded_tlib < 39
+        echoerr 'tlib >= 0.39 is required'
         finish
     endif
 endif
-let loaded_viki = 317
+let loaded_viki = 319
 
 
 " Configuration {{{1
-" If zero, viki is disabled, though the code is loaded.
-if !exists("g:vikiEnabled") "{{{2
-    let g:vikiEnabled = 1
-endif
-
 " Support for the taglist plugin.
 if !exists("tlist_viki_settings") "{{{2
     let tlist_viki_settings="deplate;s:structure"
@@ -138,9 +133,8 @@ function! VikiDefine(name, prefix, ...) "{{{3
         let vname = a:name .'::'
     end
     " let vname = escape(vname, ' \%#')
-    " exec 'command! -bang -nargs=? -complete=customlist,viki#EditComplete '. a:name .' call viki#Edit(escape(empty(<q-args>) ?'. string(vname) .' : <q-args>, "#"), "<bang>")'
     if !exists(':'+ a:name)
-        exec 'command -bang -nargs=? -complete=customlist,viki#EditComplete '. a:name .' call viki#Edit(empty(<q-args>) ? '. string(vname) .' : viki#InterEditArg('. string(a:name) .', <q-args>), "<bang>")'
+        exec 'command -bang -nargs=? -complete=customlist,viki#EditComplete '. a:name .' call viki#Edit(empty(<q-args>) ? '. string(vname) .' : viki#InterEditArg('. string(a:name) .', <q-args>), !empty("<bang>"))'
     else
         echom "Viki: Command already exists. Cannot define a command for "+ a:name
     endif
@@ -186,19 +180,23 @@ command! -nargs=? -bar VikiModeMaybe echom "Deprecated command: VikiModeMaybe: P
 
 command! -nargs=1 -complete=customlist,viki#BrowseComplete VikiBrowse :call viki#Browse(<q-args>)
 
-command! VikiHome :call viki#Edit('*', '!')
-command! VIKI :call viki#Edit('*', '!')
+command! VikiHome :call viki#HomePage()
+command! VIKI :call viki#HomePage()
 
 
 augroup viki
     au!
     autocmd BufEnter * if exists("b:vikiEnabled") && b:vikiEnabled == 1 | call viki#MinorModeReset() | endif
-    autocmd BufEnter * if exists("b:vikiEnabled") && g:vikiEnabled && exists("b:vikiCheckInexistent") && b:vikiCheckInexistent > 0 | call viki#CheckInexistent() | endif
+    autocmd BufEnter * if exists("b:vikiEnabled") && b:vikiEnabled && exists("b:vikiCheckInexistent") && b:vikiCheckInexistent > 0 | call viki#CheckInexistent() | endif
     autocmd BufLeave * if &filetype == 'viki' | let b:vikiCheckInexistent = line(".") | endif
     autocmd BufWritePost,BufUnload * if &filetype == 'viki' | call viki#SaveCache() | endif
-    autocmd VimLeavePre * let g:vikiEnabled = 0
+    autocmd VimLeavePre * let g:viki#quit = 1
     if g:vikiSaveHistory
-        autocmd VimEnter * if exists('VIKIBACKREFS_STRING') | exec 'let g:VIKIBACKREFS = '. VIKIBACKREFS_STRING | unlet VIKIBACKREFS_STRING | endif
+        if has('vim_starting')
+            autocmd VimEnter * if exists('VIKIBACKREFS_STRING') | exec 'let g:VIKIBACKREFS = '. VIKIBACKREFS_STRING | unlet VIKIBACKREFS_STRING | endif
+        else
+            if exists('VIKIBACKREFS_STRING') | exec 'let g:VIKIBACKREFS = '. VIKIBACKREFS_STRING | unlet VIKIBACKREFS_STRING | endif
+        endif
         autocmd VimLeavePre * let VIKIBACKREFS_STRING = string(g:VIKIBACKREFS)
     endif
     " As viki uses its own styles, we have to reset &filetype.
@@ -711,6 +709,13 @@ VikiDefine()) in order to reduce startup time
 3.18
 - g:vikiFoldMethodVersion defaults to 7 (a simpler method that relies on "=" though)
 - Syntax for tasks lists
+
+3.19
+- viki#Edit(): The arguments have changed: Calling :INTERVIKI oder 
+:VikiEdit with a bang will open the file in vim regardless of whether 
+it's special; it will always be opened from the global homepage
+- Register the mhtml suffix as special file
+- Require tlib 0.39
 
 
 " vim: ff=unix

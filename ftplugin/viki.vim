@@ -2,12 +2,8 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 2010-03-12.
-" @Revision: 429
-
-" if !g:vikiEnabled
-"     finish
-" endif
+" @Last Change: 2010-10-26.
+" @Revision: 433
 
 if exists("b:did_ftplugin") "{{{2
     finish
@@ -55,9 +51,8 @@ setlocal expandtab
 setlocal iskeyword+={
 setlocal iskeyword-=_
 
-if has('balloon_eval') && has('balloon_multiline') && empty(&balloonexpr)
-    setlocal ballooneval
-    setlocal balloonexpr=viki#Balloon()
+if has('balloon_multiline')
+    call tlib#balloon#Register('viki#Balloon()')
 endif
 
 let &include='\(^\s*#INC.\{-}\(\sfile=\|:\)\)'
@@ -166,7 +161,7 @@ if g:vikiFoldMethodVersion == 7
         endif
     endf
 
-elseif g:vikiFoldMethodVersion == 7
+elseif g:vikiFoldMethodVersion == 6
 
     " Fold paragraphs (see :help fold-expr)
     function VikiFoldLevel(lnum)

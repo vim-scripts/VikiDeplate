@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
-" @Last Change: 2010-03-09.
-" @Revision:    0.621
+" @Last Change: 2010-09-14.
+" @Revision:    0.679
 
 " call tlog#Log('Load: '. expand('<sfile>')) " vimtlib-sfile
 
@@ -54,8 +54,8 @@ if !exists("g:vikiSpecialProtocolsExceptions") "{{{2
     let g:vikiSpecialProtocolsExceptions = ""
 endif
 
-" Files matching these suffixes are handled by viki#OpenSpecialFile()
 if !exists("g:vikiSpecialFiles") "{{{2
+    " Files matching these suffixes are handled by viki#OpenSpecialFile()
     let g:vikiSpecialFiles = [
                 \ 'aac',
                 \ 'aif',
@@ -74,6 +74,7 @@ if !exists("g:vikiSpecialFiles") "{{{2
                 \ 'jpeg',
                 \ 'jpg',
                 \ 'm3u',
+                \ 'mhtml',
                 \ 'mp1',
                 \ 'mp2',
                 \ 'mp3',
@@ -222,6 +223,8 @@ if !exists("g:vikiBalloonLines")    | let g:vikiBalloonLines = '&lines / 3' | en
 " window.
 if !exists("g:vikiBalloon")         | let g:vikiBalloon = 1 | endif "{{{2
 
+if !exists("g:vikiBalloonEncoding") | let g:vikiBalloonEncoding = &enc | endif "{{{2
+
 
 " A list of files that contain special viki names
 if v:version >= 700 && !exists("g:vikiHyperWordsFiles") "{{{2
@@ -255,6 +258,7 @@ if !exists("g:vikiMapFunctionalityMinor") "{{{2
     let g:vikiMapFunctionalityMinor = 'f b p mf mb tF c q e'
 endif
 
+let g:viki#quit = 0
 
 let s:positions = {}
 let s:InterVikiRx = '^\(['. g:vikiUpperCharacters .']\+\)::\(.*\)$'
@@ -285,13 +289,12 @@ command! VikiJump call viki#MaybeFollowLink(0,1)
 
 command! VikiIndex :call viki#Index()
 
-command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEdit :call viki#Edit(<q-args>, "<bang>")
-command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInVim :call viki#Edit(<q-args>, "<bang>", 0, 1)
-command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditTab :call viki#Edit(<q-args>, "<bang>", 'tab')
-command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInWin1 :call viki#Edit(<q-args>, "<bang>", 1)
-command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInWin2 :call viki#Edit(<q-args>, "<bang>", 2)
-command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInWin3 :call viki#Edit(<q-args>, "<bang>", 3)
-command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInWin4 :call viki#Edit(<q-args>, "<bang>", 4)
+command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEdit :call viki#Edit(<q-args>, !empty("<bang>"))
+command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditTab :call viki#Edit(<q-args>, !empty("<bang>"), 'tab')
+command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInWin1 :call viki#Edit(<q-args>, !empty("<bang>"), 1)
+command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInWin2 :call viki#Edit(<q-args>, !empty("<bang>"), 2)
+command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInWin3 :call viki#Edit(<q-args>, !empty("<bang>"), 3)
+command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInWin4 :call viki#Edit(<q-args>, !empty("<bang>"), 4)
 
 command! VikiFilesUpdate call viki#FilesUpdate()
 command! VikiFilesUpdateAll call viki#FilesUpdateAll()
@@ -348,7 +351,7 @@ if !exists("g:vikiOpenFileWith_ANY") "{{{2
         let g:vikiOpenFileWith_ANY = "exec 'silent ! start \"\" '. shellescape('%{FILE}')"
     elseif has("mac")
         let g:vikiOpenFileWith_ANY = "exec 'silent !open '. shellescape('%{FILE}')"
-    elseif $GNOME_DESKTOP_SESSION_ID != ""
+    elseif $GNOME_DESKTOP_SESSION_ID != "" || $DESKTOP_SESSION == 'gnome'
         let g:vikiOpenFileWith_ANY = "exec 'silent !gnome-open '. shellescape('%{FILE}')"
     elseif $KDEDIR != ""
         let g:vikiOpenFileWith_ANY = "exec 'silent !kfmclient exec '. shellescape('%{FILE}')"
@@ -357,6 +360,7 @@ endif
 
 if !exists('*VikiOpenSpecialFile') "{{{2
     function! VikiOpenSpecialFile(file) "{{{3
+        " TLogVAR a:file
         " let proto = tolower(matchstr(a:file, '\c\.\zs[a-z]\+$'))
         let proto = tolower(fnamemodify(a:file, ':e'))
         if exists('g:vikiOpenFileWith_'. proto)
@@ -813,6 +817,9 @@ if v:version == 700 && !has('patch8')
     endf
 
     function! viki#MarkInexistentInElement(elt) "{{{3
+        if exists('b:vikiEnabled') && b:vikiEnabled <= 1
+            finish
+        endif
         let lr = &lazyredraw
         set lazyredraw
         call viki#SaveCursorPosition()
@@ -825,6 +832,9 @@ if v:version == 700 && !has('patch8')
     endf
 else
     function! viki#MarkInexistentInElement(elt) "{{{3
+        if exists('b:vikiEnabled') && b:vikiEnabled <= 1
+            finish
+        endif
         let lr = &lazyredraw
         set lazyredraw
         " let pos = getpos('.')
@@ -842,6 +852,13 @@ else
         endtry
     endf
 endif
+
+
+function! viki#ExprMarkInexistentInElement(elt, key) "{{{3
+    call viki#MarkInexistentInElement(a:elt)
+    return a:key
+endf
+
 
 function! viki#MarkInexistentInRange(line1, line2) "{{{3
     let lr = &lazyredraw
@@ -949,7 +966,7 @@ endf
 " The function called from autocommands: re-check for inexistent names 
 " when re-entering a buffer.
 function! viki#CheckInexistent() "{{{3
-    if g:vikiEnabled && exists("b:vikiCheckInexistent") && b:vikiCheckInexistent > 0
+    if !g:viki#quit && exists("b:vikiCheckInexistent") && b:vikiCheckInexistent > 0
         call viki#MarkInexistentInRange(b:vikiCheckInexistent, b:vikiCheckInexistent)
     endif
 endf
@@ -972,7 +989,7 @@ function! viki#SetBufferVar(name, ...) "{{{3
                 let i = i + 1
             endwh
             throw 'VikiSetBuffer: Couldn't set '. a:name
-        else
+        elseif exists('g:'. a:name)
             exe 'let b:'.a:name.' = g:'.a:name
         endif
     endif
@@ -1155,9 +1172,10 @@ function! viki#MapMarkInexistent(key, element) "{{{3
     if arg == ''
         let arg = key
     endif
-    let map = '<c-r>=viki#MarkInexistentInElement("'. a:element .'")<cr>'
-    let map = stridx(g:vikiMapBeforeKeys, a:key) != -1 ? arg.map : map.arg
-    exe 'inoremap <silent> <buffer> '. key .' '. map
+    " let map = '<c-r>=viki#MarkInexistentInElement('. string(a:element) .')<cr>'
+    " let map = stridx(g:vikiMapBeforeKeys, a:key) != -1 ? arg.map : map.arg
+    " exe 'inoremap <silent> <buffer> '. key .' '. map
+    exe 'inoremap <buffer> <expr> '. key .' viki#ExprMarkInexistentInElement('. string(a:element) .','. string(key) .')'
 endf
 
 
@@ -1890,13 +1908,20 @@ endf
 " Get the interviki name of a vikiname
 function! viki#InterVikiName(vikiname)
     " return substitute(a:vikiname, s:InterVikiRx, '\1', '')
-    return matchlist(a:vikiname, s:InterVikiRx)[1]
+    let ml = matchlist(a:vikiname, s:InterVikiRx)
+    let name = get(ml, 1, '')
+    " echom "DBG" a:vikiname string(ml) name
+    return name
 endf
 
 " Get the plain vikiname of a vikiname
 function! viki#InterVikiPart(vikiname)
     " return substitute(a:vikiname, s:InterVikiRx, '\2', '')
-    return matchlist(a:vikiname, s:InterVikiRx)[2]
+    " return matchlist(a:vikiname, s:InterVikiRx)[2]
+    let ml = matchlist(a:vikiname, s:InterVikiRx)
+    let part = get(ml, 2, '')
+    " echom "DBG" a:vikiname string(ml) part
+    return part
 endf
 
 " Return vimscript code describing an interviki
@@ -1955,11 +1980,11 @@ function! viki#InterVikiDest(vikiname, ...)
             let i_dest = fnamemodify(i_dest, ':p')
             " TLogVAR i_dest, rx
             if !empty(rx)
+                if i_dest !~ '[\/]$'
+                    let i_dest .= '/'
+                endif
                 let i_dest = s:RxifyFilename(i_dest)
                 " TLogVAR i_dest
-                if i_dest !~ '\[\\/\]$'
-                    let i_dest .= '[\/]'
-                endif
                 let v_dest = i_dest . v_dest
             else
                 let v_dest = tlib#file#Join([i_dest, v_dest], 1)
@@ -2166,7 +2191,12 @@ endf
 function! viki#HomePage(...) "{{{3
     TVarArg ['winNr', 0]
     if g:vikiHomePage != ''
-        call viki#OpenLink(g:vikiHomePage, '', '', '', winNr)
+        let bufnr = bufnr(g:vikiHomePage)
+        if bufnr != -1
+            exec 'buffer '. bufnr
+        else
+            call viki#OpenLink(g:vikiHomePage, '', '', '', winNr)
+        endif
         return 1
     else
         return 0
@@ -2175,14 +2205,16 @@ endf
 
 
 " Edit a vikiname
-" viki#Edit(name, ?bang='', ?winNr=0, ?ìgnoreSpecial=0)
+" viki#Edit(name, ?ìgnoreSpecial=0, ?winNr=0)
 function! viki#Edit(name, ...) "{{{3
-    TVarArg ['bang', ''], ['winNr', 0], ['ignoreSpecial', 0]
+    TVarArg ['ignoreSpecial', 0], ['winNr', 0]
     " TLogVAR a:name
-    if exists('b:vikiEnabled') && bang != '' && 
-                \ exists('b:vikiFamily') && b:vikiFamily != ''
-                " \ (!exists('b:vikiFamily') || b:vikiFamily != '')
+    if winNr != 0
+        exec winNr .'wincmd w'
+    endif
+    if exists('b:vikiEnabled') 
         if !viki#HomePage(winNr)
+            call tlib#notify#Echo('VIKI: Please set g:vikiHomePage', 'WarningMsg')
             call s:EditWrapper('buffer', 1)
         endif
     endif
@@ -2191,6 +2223,9 @@ function! viki#Edit(name, ...) "{{{3
     else
         let name = a:name
     end
+    if empty(name)
+        return
+    endif
     let name = substitute(name, '\\', '/', 'g')
     if !exists('b:vikiNameTypes')
         call viki#SetBufferVar('vikiNameTypes')
@@ -2306,8 +2341,8 @@ function! viki#EditComplete(ArgLead, CmdLine, CursorPos) "{{{3
     " TLogVAR a:ArgLead, a:CmdLine, a:CursorPos
     " let arglead = a:ArgLead
     let rx_pre = '^\s*\(\d*\(verb\|debug\|sil\|sp\|vert\|tab\)\w\+!\?\s\+\)*'
-    let arglead = matchstr(a:CmdLine, rx_pre .'\(\u\+\)\s\zs.*')
-    let ii = matchstr(a:CmdLine, rx_pre .'\zs\(\u\+\)\ze\s')
+    let arglead = matchstr(a:CmdLine, rx_pre .'\(\u\+\)!\?\s\zs.*')
+    let ii = matchstr(a:CmdLine, rx_pre .'\zs\(\u\+\)\ze!\?\s')
     " TLogVAR ii
     if !empty(ii) && arglead !~ '::'
         let arglead = ii.'::'.arglead
@@ -2649,7 +2684,11 @@ fun! viki#DirListing(lhs, lhb, indent) "{{{3
             if !empty(types)
                 let show_files = stridx(types, 'f') != -1
                 let show_dirs  = stridx(types, 'd') != -1
-                call filter(ls, '(show_files && !isdirectory(v:val)) || (show_dirs && isdirectory(v:val))')
+                if show_files || show_dirs
+                    call filter(ls, '(show_files && !isdirectory(v:val)) || (show_dirs && isdirectory(v:val))')
+                else
+                    let ls = []
+                endif
             endif
             let filter = get(args, 'filter', '')
             if !empty(filter)
@@ -2865,8 +2904,12 @@ function! viki#Balloon() "{{{3
         " TLogVAR v_dest
         if !viki#IsSpecial(v_dest) 
             try
-                let text = readfile(v_dest)[0 : eval(g:vikiBalloonLines)]
-                return join(text, "\n")
+                let lines = readfile(v_dest)[0 : eval(g:vikiBalloonLines)]
+                let text  = join(lines, "\n")
+                if &fenc != g:vikiBalloonEncoding && has('iconv')
+                    let text = iconv(text, &fenc, g:vikiBalloonEncoding)
+                endif
+                return text
             catch
             endtry
         endif
