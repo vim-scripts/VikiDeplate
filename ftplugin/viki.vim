@@ -1,9 +1,9 @@
 " viki.vim -- the viki ftplugin
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
-" @Created:     12-JÃ¤n-2004.
-" @Last Change: 2010-10-26.
-" @Revision: 433
+" @Created:     12-Jän-2004.
+" @Last Change: 2012-01-20.
+" @Revision: 482
 
 if exists("b:did_ftplugin") "{{{2
     finish
@@ -14,27 +14,66 @@ let b:did_ftplugin = 1
 " endif
 " let b:did_viki_ftplugin = 1
 
-let b:vikiCommentStart = "%"
-let b:vikiCommentEnd   = ""
-let b:vikiHeadingMaxLevel = -1
+" Defines the prefix of comments when in "full" viki mode.
+" In minor mode this variable is set to either:
+"     - b:commentStart
+"     - b:ECcommentOpen
+"     - matchstr(&commentstring, "^\\zs.*\\ze%s")
+let b:vikiCommentStart = "%" "{{{2
+let b:vikiCommentEnd   = "" "{{{2
+let b:vikiHeadingMaxLevel = -1 "{{{2
 
 
-if !exists("b:vikiMaxFoldLevel") | let b:vikiMaxFoldLevel = 5 | endif "{{{2
-if !exists("b:vikiInverseFold")  | let b:vikiInverseFold  = 0 | endif "{{{2
-" Consider fold levels bigger that this as text body, levels smaller 
-" than this as headings
-" This variable is only used if g:vikiFoldMethodVersion is 1.
-if !exists("g:vikiFoldBodyLevel")   | let g:vikiFoldBodyLevel = 6        | endif "{{{2
+if !exists("g:vikiFoldMethodVersion")
+    " :nodoc:
+    " Choose folding method version
+    " Viki supports several methods (1..7) for defining folds. If you 
+    " find that text entry is slowed down it is probably due to the 
+    " chosen fold method. You could try to use another method (see 
+    " ../ftplugin/viki.vim for alternative methods) or check out this 
+    " vim tip:
+    " http://vim.wikia.com/wiki/Keep_folds_closed_while_inserting_text
+    let g:vikiFoldMethodVersion = 8 "{{{2
+endif
 
-" Choose folding method version
-if !exists("g:vikiFoldMethodVersion") | let g:vikiFoldMethodVersion = 7  | endif "{{{2
+if !exists("b:vikiMaxFoldLevel")
+    let b:vikiMaxFoldLevel = 5 "{{{2
+endif
+if !exists("b:vikiInverseFold")
+    " If set, the section headings' levels are folded in reversed order 
+    " so that |b:vikiMaxFoldLevel| corresponds to the top level and 1 to 
+    " the lowest level. This is useful when maintaining a file with a 
+    " fixed structure where the important things happen in subsections 
+    " while the top sections change little.
+    let b:vikiInverseFold  = 0 "{{{2
+endif
+if !exists("g:vikiFoldBodyLevel")
+    " Consider fold levels bigger that this as text body, levels smaller 
+    " than this as headings
+    " This variable is only used if |g:vikiFoldMethodVersion| is 1.
+    " If set to 0, the "b" mode in |vikiFolds| will set the body level 
+    " depending on the headings used in the current buffer. Otherwise 
+    " |b:vikiHeadingMaxLevel| + 1 will be used.
+    let g:vikiFoldBodyLevel = 6 "{{{2
+endif
 
-" What is considered for folding.
-" This variable is only used if g:vikiFoldMethodVersion is 1.
-if !exists("g:vikiFolds")           | let g:vikiFolds = 'hf'             | endif "{{{2
+if !exists("g:vikiFolds")
+    " Define which elements should be folded:
+    "     h :: Heading
+    "     H :: Headings (but inverse folding)
+    "     l :: Lists
+    "     b :: The body has max heading level + 1. This is slightly faster 
+    "       than the other version as vim never has to scan the text; but 
+    "       the behaviour may vary depending on the sequence of headings if 
+    "       |vikiFoldBodyLevel| is set to 0.
+    "     f :: Files regions.
+    "     s :: ???
+    " This variable is only used if |g:vikiFoldMethodVersion| is 1.
+    let g:vikiFolds = 'hf' "{{{2
+endif
 
-" Context lines for folds
 if !exists("g:vikiFoldsContext") "{{{2
+    " Context lines for folds
     let g:vikiFoldsContext = [2, 2, 2, 2]
 endif
 
@@ -43,9 +82,11 @@ exec "setlocal commentstring=". substitute(b:vikiCommentStart, "%", "%%", "g")
             \ ."%s". substitute(b:vikiCommentEnd, "%", "%%", "g")
 exec "setlocal comments=fb:-,fb:+,fb:*,fb:#,fb:?,fb:@,:". b:vikiCommentStart
 
-setlocal foldmethod=expr
-setlocal foldexpr=VikiFoldLevel(v:lnum)
-setlocal foldtext=VikiFoldText()
+if g:vikiFoldMethodVersion > 0
+    setlocal foldmethod=expr
+    setlocal foldexpr=VikiFoldLevel(v:lnum)
+    setlocal foldtext=VikiFoldText()
+endif
 setlocal expandtab
 " setlocal iskeyword+=#,{
 setlocal iskeyword+={
@@ -56,21 +97,7 @@ if has('balloon_multiline')
 endif
 
 let &include='\(^\s*#INC.\{-}\(\sfile=\|:\)\)'
-" let &include='\(^\s*#INC.\{-}\(\sfile=\|:\)\|\[\[\)'
-" set includeexpr=substitute(v:fname,'\].*$','','')
-
 let &define='^\s*\(#Def.\{-}id=\|#\(Fn\|Footnote\).\{-}\(:\|id=\)\|#VAR.\{-}\s\)'
-
-" if !exists('b:vikiHideBody') | let b:vikiHideBody = 0 | endif
-
-" if !hasmapto(":VikiFind")
-"     nnoremap <buffer> <c-tab>   :VikiFindNext<cr>
-"     nnoremap <buffer> <LocalLeader>vn :VikiFindNext<cr>
-"     nnoremap <buffer> <c-s-tab> :VikiFindPrev<cr>
-"     nnoremap <buffer> <LocalLeader>vN :VikiFindPrev<cr>
-" endif
-
-" compiler deplate
 
 map <buffer> <silent> [[ :call viki#FindPrevHeading()<cr>
 map <buffer> <silent> ][ :call viki#FindNextHeading()<cr>
@@ -88,7 +115,7 @@ let b:undo_ftplugin = 'setlocal iskeyword< expandtab< foldtext< foldexpr< foldme
 
 let b:vikiEnabled = 2
 
-if exists('*VikiFoldLevel') "{{{2
+if exists('*VikiFoldLevel') || g:vikiFoldMethodVersion == 0 "{{{2
     finish
 endif
 
@@ -148,312 +175,48 @@ function! s:SetMaxLevel() "{{{3
     call winrestview(view)
 endf
 
-if g:vikiFoldMethodVersion == 7
+function! s:UpdateHeadings() "{{{3
+    let b:viki_headings = {}
+    let pos = getpos('.')
+    try
+        g/^\*\+\s/let b:viki_headings[line('.')] = matchend(getline('.'), '^\*\+\s')
+    finally
+        call setpos('.', pos)
+    endtry
+endf
+call s:UpdateHeadings()
 
-    function VikiFoldLevel(lnum)
-        let cline = getline(a:lnum)
-        let level = matchend(cline, '^\*\+')
-        " TLogVAR level, cline
-        if level == -1
-            return "="
-        else
-            return ">". level
+autocmd viki CursorHold,CursorHoldI <buffer> call s:UpdateHeadings()
+
+func s:NumericSort(i1, i2)
+    return a:i1 == a:i2 ? 0 : a:i1 > a:i2 ? 1 : -1
+endfunc
+
+function VikiFoldLevel(lnum)
+    let vikiFolds = s:VikiFolds()
+    if vikiFolds == ''
+        " TLogDBG 'no folds'
+        return
+    endif
+    let level = 1
+    if vikiFolds =~? 'h'
+        let hd_lnums = sort(map(keys(b:viki_headings), 'str2nr(v:val)'), 's:NumericSort')
+        " TLogVAR hd_lnums
+        for hd_lnum in hd_lnums
+            if hd_lnum <= a:lnum
+                let level = b:viki_headings[hd_lnum]
+                " TLogVAR hd_lnum, level
+            endif
+        endfor
+        if vikiFolds =~# 'H'
+            let max_level = max(values(b:viki_headings))
+            let level = max_level - level + 1
         endif
-    endf
+    endif
+    if vikiFolds =~# 'l'
+        let level += matchend(getline(prevnonblank(a:lnum)), '^\s\+') / &shiftwidth
+    endif
+    " TLogVAR a:lnum, level
+    return level
+endf
 
-elseif g:vikiFoldMethodVersion == 6
-
-    " Fold paragraphs (see :help fold-expr)
-    function VikiFoldLevel(lnum)
-        return getline(a:lnum) =~ '^\\s*$' && getline(a:lnum + 1) =~ '\\S' ? '<1' : 1
-    endf
-
-elseif g:vikiFoldMethodVersion == 5
-
-    function! VikiFoldLevel(lnum) "{{{3
-        " TLogVAR a:lnum
-        let vikiFolds = s:VikiFolds()
-        if vikiFolds =~# 'h'
-            " TLogVAR b:vikiHeadingStart
-            let lt = getline(a:lnum)
-            let fh = matchend(lt, '\V\^'. b:vikiHeadingStart .'\+\ze\s')
-            if fh != -1
-                " TLogVAR fh, b:vikiHeadingMaxLevel
-                if b:vikiHeadingMaxLevel == -1
-                    " TLogDBG 'SetMaxLevel'
-                    call s:SetMaxLevel()
-                endif
-                if fh > b:vikiHeadingMaxLevel
-                    let b:vikiHeadingMaxLevel = fh
-                endif
-                if vikiFolds =~# 'H'
-                    " TLogDBG 'inverse folds'
-                    let fh = b:vikiHeadingMaxLevel - fh + 1
-                endif
-                " TLogVAR fh, lt
-                return '>'.fh
-            endif
-            let body_level = indent(a:lnum) / &sw + 1
-            return b:vikiHeadingMaxLevel + body_level
-        endif
-    endf
-
-elseif g:vikiFoldMethodVersion == 4
-
-    function! VikiFoldLevel(lnum) "{{{3
-        " TLogVAR a:lnum
-        let vikiFolds = s:VikiFolds()
-        if vikiFolds =~# 'h'
-            " TLogVAR b:vikiHeadingStart
-            let lt = getline(a:lnum)
-            let fh = matchend(lt, '\V\^'. b:vikiHeadingStart .'\+\ze\s')
-            if fh != -1
-                " TLogVAR fh, b:vikiHeadingMaxLevel
-                if b:vikiHeadingMaxLevel == -1
-                    " TLogDBG 'SetMaxLevel'
-                    call s:SetMaxLevel()
-                endif
-                if fh > b:vikiHeadingMaxLevel
-                    let b:vikiHeadingMaxLevel = fh
-                endif
-                if vikiFolds =~# 'H'
-                    " TLogDBG 'inverse folds'
-                    let fh = b:vikiHeadingMaxLevel - fh + 1
-                endif
-                " TLogVAR fh, lt
-                return '>'.fh
-            endif
-            if b:vikiHeadingMaxLevel <= 0
-                return b:vikiHeadingMaxLevel + 1
-            else
-                return '='
-            endif
-        endif
-    endf
-
-elseif g:vikiFoldMethodVersion == 3
-
-    function! VikiFoldLevel(lnum) "{{{3
-        let lt = getline(a:lnum)
-        if lt !~ '\S'
-            return '='
-        endif
-        let fh = matchend(lt, '\V\^'. b:vikiHeadingStart .'\+\ze\s')
-        if fh != -1
-            " let fh += 1
-            if b:vikiHeadingMaxLevel == -1
-                call s:SetMaxLevel()
-            endif
-            if fh > b:vikiHeadingMaxLevel
-                let b:vikiHeadingMaxLevel = fh
-                " TLogVAR b:vikiHeadingMaxLevel
-            endif
-            " TLogVAR fh
-            return fh
-        endif
-        let li = indent(a:lnum)
-        let tf = b:vikiHeadingMaxLevel + 1 + (li / &sw)
-        " TLogVAR tf
-        return tf
-    endf
-
-elseif g:vikiFoldMethodVersion == 2
-
-    function! VikiFoldLevel(lnum) "{{{3
-        let lt = getline(a:lnum)
-        let fh = matchend(lt, '\V\^'. b:vikiHeadingStart .'\+\ze\s')
-        if fh != -1
-            return fh
-        endif
-        let ll = prevnonblank(a:lnum)
-        if ll != a:lnum
-            return '='
-        endif
-        let li = indent(a:lnum)
-        let pl = prevnonblank(a:lnum - 1)
-        let pi = indent(pl)
-        if li == pi || pl == 0
-            return '='
-        elseif li > pi
-            return 'a'. ((li - pi) / &sw)
-        else
-            return 's'. ((pi - li) / &sw)
-        endif
-    endf
-
-else
-
-    function! VikiFoldLevel(lnum) "{{{3
-        " let lc = getpos('.')
-        let view = winsaveview()
-        " TLogVAR lc
-        let w0 = line('w0')
-        let lr = &lazyredraw
-        set lazyredraw
-        try
-            let vikiFolds = s:VikiFolds()
-            if vikiFolds == ''
-                " TLogDBG 'no folds'
-                return
-            endif
-            if b:vikiHeadingMaxLevel == -1
-                call s:SetMaxLevel()
-            endif
-            if vikiFolds =~# 'f'
-                let idt = indent(a:lnum)
-                if synIDattr(synID(a:lnum, idt, 1), 'name') =~ '^vikiFiles'
-                    call s:SetHeadingMaxLevel(1)
-                    " TLogDBG 'vikiFiles: '. idt
-                    return b:vikiHeadingMaxLevel + idt / &shiftwidth
-                endif
-            endif
-            if stridx(vikiFolds, 'h') >= 0
-                if vikiFolds =~? 'h'
-                    let fl = s:ScanHeading(a:lnum, a:lnum, vikiFolds)
-                    if fl != ''
-                        " TLogDBG 'heading: '. fl
-                        return fl
-                    endif
-                endif
-                if vikiFolds =~# 'l' 
-                    let list = s:MatchList(a:lnum)
-                    if list > 0
-                        call s:SetHeadingMaxLevel(1)
-                        " TLogVAR list
-                        " return '>'. (b:vikiHeadingMaxLevel + (list / &sw))
-                        return (b:vikiHeadingMaxLevel + (list / &sw))
-                    elseif getline(a:lnum) !~ '^[[:blank:]]' && s:MatchList(a:lnum - 1) > 0
-                        let fl = s:ScanHeading(a:lnum - 1, 1, vikiFolds)
-                        if fl != ''
-                            if fl[0] == '>'
-                                let fl = strpart(fl, 1)
-                            endif
-                            " TLogDBG 'list indent: '. fl
-                            return '<'. (fl + 1)
-                        endif
-                    endif
-                endif
-                " I have no idea what this is about.
-                " Is this about "inverse" folding?
-                " if vikiFolds =~# 's'
-                "     if exists('b:vikiFoldDef')
-                "         exec b:vikiFoldDef
-                "         if vikiFoldLine == a:lnum
-                "             return vikiFoldLevel
-                "         endif
-                "     endif
-                "     let i = 1
-                "     while i > a:lnum
-                "         let vfl = VikiFoldLevel(a:lnum - i)
-                "         if vfl[0] == '>'
-                "             let b:vikiFoldDef = 'let vikiFoldLine='. a:lnum 
-                "                         \ .'|let vikiFoldLevel="'. vfl .'"'
-                "             return vfl
-                "         elseif vfl == '='
-                "             let i = i + 1
-                "         endif
-                "     endwh
-                " endif
-                call s:SetHeadingMaxLevel(1)
-                " if b:vikiHeadingMaxLevel == 0
-                "     return 0
-                " elseif vikiFolds =~# 'b'
-                if vikiFolds =~# 'b'
-                    let bl = exists('b:vikiFoldBodyLevel') ? b:vikiFoldBodyLevel : g:vikiFoldBodyLevel
-                    if bl > 0
-                        " TLogDBG 'body: '. bl
-                        return bl
-                    else
-                        " TLogDBG 'body fallback: '. b:vikiHeadingMaxLevel
-                        return b:vikiHeadingMaxLevel + 1
-                    endif
-                else
-                    " TLogDBG 'else'
-                    return "="
-                endif
-            endif
-            " TLogDBG 'zero'
-            return 0
-        finally
-            exec 'norm! '. w0 .'zt'
-            " TLogVAR lc
-            " call setpos('.', lc)
-            call winrestview(view)
-            let &lazyredraw = lr
-        endtry
-    endfun
-
-    function! s:ScanHeading(lnum, top, vikiFolds) "{{{3
-        " TLogVAR a:lnum, a:top
-        let [lhead, head] = s:SearchHead(a:lnum, a:top)
-        " TLogVAR head
-        if head > 0
-            if head > b:vikiHeadingMaxLevel
-                let b:vikiHeadingMaxLevel = head
-            endif
-            if b:vikiInverseFold || a:vikiFolds =~# 'H'
-                if b:vikiMaxFoldLevel > head
-                    return ">". (b:vikiMaxFoldLevel - head)
-                else
-                    return ">0"
-                end
-            else
-                return ">". head
-            endif
-        endif
-        return ''
-    endf
-
-    function! s:SetHeadingMaxLevel(once) "{{{3
-        if a:once && b:vikiHeadingMaxLevel == 0
-            return
-        endif
-        " let pos = getpos('.')
-        let view = winsaveview()
-        " TLogVAR pos
-        try
-            silent! keepjumps exec 'g/\V\^'. b:vikiHeadingStart .'\+\s/call s:SetHeadingMaxLevelAtCurrentLine(line(".")'
-        finally
-            " TLogVAR pos
-            " call setpos('.', pos)
-            call winrestview(view)
-        endtry
-    endf
-
-    function! s:SetHeadingMaxLevelAtCurrentLine(lnum) "{{{3
-        let m = s:MatchHead(lnum)
-        if m > b:vikiHeadingMaxLevel
-            let b:vikiHeadingMaxLevel = m
-        endif
-    endf
-
-    function! s:SearchHead(lnum, top) "{{{3
-        " let pos = getpos('.')
-        let view = winsaveview()
-        " TLogVAR pos
-        try
-            exec a:lnum
-            norm! $
-            let ln = search('\V\^'. b:vikiHeadingStart .'\+\s', 'bWcs', a:top)
-            if ln
-                return [ln, s:MatchHead(ln)]
-            endif
-            return [0, 0]
-        finally
-            " TLogVAR pos
-            " call setpos('.', pos)
-            call winrestview(view)
-        endtry
-    endf
-
-    function! s:MatchHead(lnum) "{{{3
-        " let head = matchend(getline(a:lnum), '\V\^'. escape(b:vikiHeadingStart, '\') .'\ze\s\+')
-        return matchend(getline(a:lnum), '\V\^'. b:vikiHeadingStart .'\+\ze\s')
-    endf
-
-    function! s:MatchList(lnum) "{{{3
-        let rx = '^[[:blank:]]\+\ze\(#[A-F]\d\?\|#\d[A-F]\?\|[-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\|.\{-1,}[[:blank:]]::\)[[:blank:]]'
-        return matchend(getline(a:lnum), rx)
-    endf
-
-endif

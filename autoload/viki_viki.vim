@@ -3,12 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-09-03.
-" @Last Change: 2010-09-13.
-" @Revision:    0.0.129
-
-let s:save_cpo = &cpo
-set cpo&vim
-" call tlog#Log('Load: '. expand('<sfile>')) " vimtlib-sfile
+" @Last Change: 2011-12-04.
+" @Revision:    0.0.145
 
 
 """ viki/deplate {{{1
@@ -151,7 +147,7 @@ function! viki_viki#SetupBuffer(state, ...) "{{{3
     if viki#IsSupportedType("x") && !(dontSetup =~# "x")
         " let vikicmd = '['. b:vikiUpperCharacters .']\w*'
         let vikicmd    = '\(IMG\|Img\|INC\%[LUDE]\)\>'
-        let vikimacros = '\(img\|ref\)\>'
+        let vikimacros = '\(img\|ref\|fn\)\>'
         let b:vikiCmdRx        = '\({'. vikimacros .'\|#'. vikicmd .'\)\(.\{-}\):\s*\(.\{-}\)\($\|}\)'
         let b:vikiCmdSimpleRx  = '\({'. vikimacros .'\|#'. vikicmd .'\).\{-}\($\|}\)'
         let b:vikiCmdNameIdx   = 1
@@ -171,12 +167,14 @@ function! viki_viki#SetupBuffer(state, ...) "{{{3
     
     if viki#IsSupportedType("e") && !(dontSetup =~# "e")
         let b:vikiExtendedNameRx = 
-                    \ '\[\[\(\('.b:vikiSpecialProtocols.'\)://[^]]\+\|[^]#]\+\)\?'.
-                    \ '\(#\([^]]*\)\)\?\]\(\[\([^]]\+\)\]\)\?\([!~*$\-]*\)\]'
+                    \ '\[\[\(\('.b:vikiSpecialProtocols.'\)://[^]]\+\|.\{-}\)\?'.
+                    \ '\(#\(.\{-}\)\)\?\]\(\[\([^]]\+\)\]\)\?\([!~*$\-]*\)\]'
                     " \ '\(#\('. b:vikiAnchorNameRx .'\)\)\?\]\(\[\([^]]\+\)\]\)\?[!~*\-]*\]'
+                    " \ '\[\[\(\('.b:vikiSpecialProtocols.'\)://[^]]\+\|[^]#]\+\)\?'.
         let b:vikiExtendedNameSimpleRx = 
-                    \ '\[\[\('. b:vikiSpecialProtocols .'://[^]]\+\|[^]#]\+\)\?'.
-                    \ '\(#[^]]*\)\?\]\(\[[^]]\+\]\)\?[!~*$\-]*\]'
+                    \ '\[\[\('. b:vikiSpecialProtocols .'://[^]]\+\|.\{-}\)\?'.
+                    \ '\(#.\{-}\)\?\]\(\[[^]]\+\]\)\?[!~*$\-]*\]'
+                    " \ '\[\[\('. b:vikiSpecialProtocols .'://[^]]\+\|[^]#]\+\)\?'.
                     " \ '\(#'. b:vikiAnchorNameRx .'\)\?\]\(\[[^]]\+\]\)\?[!~*\-]*\]'
         let b:vikiExtendedNameNameIdx   = 6
         let b:vikiExtendedNameModIdx    = 7
@@ -402,14 +400,19 @@ function! viki_viki#FindAnchor(anchor) "{{{3
     if a:anchor == g:vikiDefNil || a:anchor == ''
         return
     endif
-    let mode = matchstr(a:anchor, '^\(l\(ine\)\?\|rx\|vim\)\ze=')
+    let mode = matchstr(a:anchor, '^\(l\(ine\)\?\|rx\|vim\|fn\)\ze=')
     if exists('*VikiAnchor_'. mode)
         let arg  = matchstr(a:anchor, '=\zs.\+$')
         call VikiAnchor_{mode}(arg)
     else
         let co = col('.')
         let li = line('.')
-        let anchorRx = viki#GetAnchorRx(a:anchor)
+        if a:anchor =~ '^fn='
+            let anchorv = escape(matchstr(a:anchor, '^fn=\zs.*'), '\')
+            let anchorRx = printf('^\V\C\s\*#\(Footnote\|Fn\)\.\{-}\(\sid=%s\>\|:\s\+%s\s\+<<\(\u\+\)\?\$\)', anchorv, anchorv)
+        else
+            let anchorRx = viki#GetAnchorRx(a:anchor)
+        endif
         " TLogVAR anchorRx
         keepjumps go
         let found = search(anchorRx, 'Wc')
@@ -431,7 +434,7 @@ function! viki_viki#CompleteExtendedNameDef(def) "{{{3
     exec viki#SplitDef(a:def)
     if v_dest == g:vikiDefNil
         if v_anchor == g:vikiDefNil
-            throw "Viki: Malformed extended viki name (no destination): ". string(a:def)
+            call viki#MalformedName("extended name (no destination): ". string(a:def))
         else
             let v_dest = g:vikiSelfRef
         endif
@@ -496,6 +499,10 @@ function! viki_viki#CompleteCmdDef(def) "{{{3
         endif
     elseif v_name =~ "^#INC"
         " <+TODO+> Search path?
+    elseif v_name =~ '^{fn\>'
+        let v_anchor = 'fn=' . v_dest
+        let v_name = g:vikiSelfRef
+        let v_dest = g:vikiSelfRef
     elseif v_name =~ '^{ref\>'
         let v_anchor = v_dest
         let v_name = g:vikiSelfRef
@@ -519,11 +526,11 @@ function! viki_viki#CompleteSimpleNameDef(def) "{{{3
     " TLogVAR a:def
     exec viki#SplitDef(a:def)
     if v_name == g:vikiDefNil
-        throw "Viki: Malformed simple viki name (no name): ". string(a:def)
+        call viki#MalformedName("simple name (no name): ". string(a:def))
     endif
 
     if !(v_dest == g:vikiDefNil)
-        throw "Viki: Malformed simple viki name (destination=".v_dest."): ". string(a:def)
+        call viki#MalformedName("simple name (destination=".v_dest."): ". string(a:def))
     endif
 
     " TLogVAR v_name
@@ -594,6 +601,3 @@ function! viki_viki#Find(flag, ...) "{{{3
     endif
 endf
 
-
-let &cpo = s:save_cpo
-unlet s:save_cpo
