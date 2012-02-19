@@ -3,9 +3,11 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
-" @Last Change: 2011-12-29.
-" @Revision:    0.863
+" @Last Change: 2012-02-19.
+" @Revision:    0.909
 
+
+exec 'runtime! autoload/viki/enc_'. &enc .'.vim'
 
 """ General {{{1
 
@@ -72,6 +74,9 @@ if !exists("g:vikiSpecialProtocols")
     " URLs matching these protocols are handled by |VikiOpenSpecialProtocol()|.
     " Can also be buffer-local.
     let g:vikiSpecialProtocols = 'https\?\|ftps\?\|nntp\|mailto\|mailbox\|file' "{{{2
+    if exists("g:vikiSpecialProtocolsExtra")
+        let g:vikiSpecialProtocols .= '\|'. g:vikiSpecialProtocolsExtra
+    endif
 endif
 
 if !exists("g:vikiSpecialProtocolsExceptions")
@@ -129,6 +134,9 @@ if !exists("g:vikiSpecialFiles") "{{{2
                 \ 'xlsx',
                 \ 'xmind',
                 \ ]
+    if exists("g:vikiSpecialFilesExtra")
+        let g:vikiSpecialFiles += g:vikiSpecialFilesExtra
+    endif
 endif
 
 if !exists("g:vikiSpecialFilesExceptions")
@@ -157,12 +165,12 @@ if !exists('g:vikiPromote')
 endif
 
 if !exists("g:vikiUseParentSuffix")
-    " If non-nil, use the parent document's suffix.
+    " If true, use the parent document's suffix.
     " If true, always append the "parent" file's suffix to the 
     " destination file name. I.e. if the current file is "ThisIdea.txt" 
     " the the viki name "OtherIdea" will refer to the file 
     " "OtherIdea.txt".
-    let g:vikiUseParentSuffix = 0 "{{{2
+    let g:vikiUseParentSuffix = 1 "{{{2
 endif
 
 if !exists("g:vikiAnchorMarker")
@@ -268,7 +276,7 @@ if !exists("g:vikiFamily")
     " Apart from the default behaviour the following families are defined:
     "     - latex (see |viki-latex|)
     "     - anyword (see |viki-anyword|)
-    let g:vikiFamily = "" "{{{2
+    let g:vikiFamily = "viki" "{{{2
 endif
 
 if !exists("g:vikiDirSeparator")
@@ -365,6 +373,12 @@ if !exists('g:viki#files_head_rx')
     " lines will be preprocessed by removing text matching this 
     " expression.
     let g:viki#files_head_rx = '^\(\*\s\+\)'   "{{{2
+endif
+
+if !exists('g:viki#use_texmath')
+    " If true, load syntax/texmath.vim for a prettier display of 
+    " mathematical formulas.
+    let g:viki#use_texmath = 1   "{{{2
 endif
 
 let g:viki#quit = 0
@@ -714,8 +728,22 @@ function! s:EditWrapper(cmd, fname) "{{{3
                 " TLogDBG a:cmd .' '. fname
                 exec a:cmd .' '. fname
             else
+                let pre = ''
+                if &modified && !&hidden
+                    call inputsave()
+                    let val = input('Viki: Hide/save modified buffer? (HIDE/save/cancel) ')
+                    call inputrestore()
+                    if val =~? '^s\%[ave]$'
+                        update
+                    elseif val =~? '^c\%[ancel]$'
+                        return
+                    else
+                        let pre = 'hide'
+                    endif
+                    echom "Viki: Please set g:vikiHide"
+                endif
                 " TLogDBG a:cmd .' '. fname
-                exec a:cmd .' '. fname
+                exec pre a:cmd fname
             endif
         catch /^Vim\%((\a\+)\)\=:E37/
             echoerr "Vim raised E37: You tried to abondon a dirty buffer (see :h E37)"
@@ -1190,7 +1218,7 @@ endf
 " viki#DispatchOnFamily(fn, ?family='', *args)
 function! viki#DispatchOnFamily(fn, ...) "{{{3
     let fam = a:0 >= 1 && a:1 != '' ? a:1 : viki#Family()
-    if !exists('g:loaded_viki_'. fam)
+    if !exists('*viki_'. fam .'#SetupBuffer')
         exec 'runtime autoload/viki_'. fam .'.vim'
     endif
     if fam == '' || !exists('*viki_'.fam.'#'.a:fn)
@@ -1380,7 +1408,6 @@ call s:ResetSavedCursorPosition()
 
 
 " Restore the cursor position
-" TODO: adapt for vim7
 " viki#RestoreCursorPosition(?line, ?VCol, ?EOL, ?Winline)
 function! viki#RestoreCursorPosition(...) "{{{3
     let bn = bufnr('%')
@@ -1755,10 +1782,11 @@ endf
 function! viki#Family(...) "{{{3
     let anyway = a:0 >= 1 ? a:1 : 0
     if (anyway || (exists('b:vikiEnabled') && b:vikiEnabled)) && exists('b:vikiFamily') && !empty(b:vikiFamily)
-        return b:vikiFamily
+        let rv = b:vikiFamily
     else
-        return g:vikiFamily
+        let rv = g:vikiFamily
     endif
+    return empty(rv) ? 'viki' : rv
 endf
 
 " Return the number of windows
@@ -2769,7 +2797,9 @@ fun! viki#FilesUpdateAll() "{{{3
         endwh
     finally
         " call setpos('.', p)
-        call winrestview(view)
+        if winsaveview() != view
+            call winrestview(view)
+        endif
     endtry
 endf
 
@@ -2851,6 +2881,7 @@ endf
 
 fun! viki#FilesUpdate() "{{{3
     let [lh, lb, le, indent] = s:GetRegionGeometry('Files')
+    " TLogVAR lh, lb, le, indent
     " 'vikiFiles', 'vikiFilesRegion'
     call s:DeleteRegionBody(lb, le)
     call viki#DirListing(lh, lb, indent)
@@ -2891,17 +2922,19 @@ fun! viki#DirListing(lhs, lhb, indent) "{{{3
             if !empty(exclude)
                 call filter(ls, 'v:val !~ exclude')
             endif
-            let order = get(args, 'order', '')
-            " if !empty(order)
-            "     if order == 'd'
-            "         call sort(ls, 's:SortDirsFirst')
-            "     endif
-            " endif
-            let list = split(get(args, 'list', ''), ',\s*')
-            let head = 0 + get(args, 'head', '0')
-            call map(ls, 'a:indent.s:GetFileEntry(v:val, list, head)')
-            let @t = join(ls, "\<c-j>") ."\<c-j>"
-            exec 'norm! '. a:lhb .'G"tP'
+            if !empty(ls)
+                let order = get(args, 'order', '')
+                " if !empty(order)
+                "     if order == 'd'
+                "         call sort(ls, 's:SortDirsFirst')
+                "     endif
+                " endif
+                let list = split(get(args, 'list', ''), ',\s*')
+                let head = 0 + get(args, 'head', '0')
+                call map(ls, 'a:indent.s:GetFileEntry(v:val, list, head)')
+                let @t = join(ls, "\<c-j>") ."\<c-j>"
+                exec 'norm! '. a:lhb .'G"tP'
+            endif
         finally
             let @t = t
             " call setpos('.', p)
@@ -3099,17 +3132,43 @@ function! viki#Balloon() "{{{3
         let def = viki#GetLink(1, getline(v:beval_lnum), v:beval_col)
         exec viki#SplitDef(def)
         " TLogVAR v_dest
-        if !viki#IsSpecial(v_dest) 
+        let text = ''
+        if viki#IsSpecial(v_dest) 
+            if isdirectory(v_dest)
+                let pattern = tlib#file#Join([v_dest, '*'])
+                let files = glob(pattern)
+                let list = split(files, '\n')
+                call map(list, 'fnamemodify(v:val, ":t")')
+                let lines = []
+                if !empty(list)
+                    let max = &columns
+                    let line = []
+                    let len = 0
+                    for file in list
+                        let len1 = len + strlen(file)
+                        if len1 < max
+                            call add(line, file)
+                            let len = len1
+                        else
+                            call add(lines, join(line, ', '))
+                            let line = []
+                            let len = 0
+                        endif
+                    endfor
+                endif
+                let text  = join(lines, "\n")
+            endif
+        else
             try
                 let lines = readfile(v_dest)[0 : eval(g:vikiBalloonLines)]
                 let text  = join(lines, "\n")
-                if &fenc != g:vikiBalloonEncoding && has('iconv')
-                    let text = iconv(text, &fenc, g:vikiBalloonEncoding)
-                endif
-                return text
             catch
             endtry
         endif
+        if !empty(text) && &fenc != g:vikiBalloonEncoding && has('iconv')
+            let text = iconv(text, &fenc, g:vikiBalloonEncoding)
+        endif
+        return text
     endif
     return ''
 endf
@@ -3121,24 +3180,17 @@ function! viki#MatchList(lnum) "{{{3
 endf
 
 
-"                                                     *viki-text-objects* *ii*
-" Create a new text-object ii that works on a inner list item. Once the 
-" maps are enabled, users may, e.g., visually select an item in a list 
-" by typing vii. See |viki#SelectListItem()| for a definition of what is 
-" considered a list item.
-" 
-" The maps are local to the current buffer. Add this line to your 
-" |vimrc| file in order to enable the ii text-object for all viki 
-" buffers:>
-"   au FileType viki call viki#MapListItemTextObject()
-function! viki#MapListItemTextObject() "{{{3
-    " vnoremap <buffer> ii :<c-u>silent! call viki#SelectListItem('.')<cr>
-    vnoremap <buffer> <expr> ii <SID>ListItemTextObject()
-    omap <buffer> ii :normal Vii<cr>
-endf
-
-
-function! s:ListItemTextObject() "{{{3
+" "                                                     *viki-text-objects* *ii*
+" " Create a new text-object ii that works on a inner list item. Once the 
+" " maps are enabled, users may, e.g., visually select an item in a list 
+" " by typing vii. See |viki#SelectListItem()| for a definition of what is 
+" " considered a list item.
+" " 
+" " The maps are local to the current buffer. Add this line to your 
+" " |vimrc| file in order to enable the ii text-object for all viki 
+" " buffers:>
+" "   au FileType viki call viki#MapListItemTextObject()
+function! viki#ListItemTextObject() "{{{3
     if indent('.') == 0
         return "ip"
     else

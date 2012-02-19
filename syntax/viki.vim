@@ -2,21 +2,26 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 2010-11-15.
-" @Revision: 0.966
+" @Last Change: 2012-02-17.
+" @Revision: 0.1012
 
 if version < 600
     syntax clear
 elseif exists("b:current_syntax")
     finish
 endif
+scriptencoding utf-8
 
 " This command sets up buffer variables and adds some basic highlighting.
 let b:vikiEnabled = 0
 call viki#DispatchOnFamily('MinorMode', '', 2)
 let b:vikiEnabled = 2
 
-runtime syntax/texmath.vim
+syntax spell toplevel
+
+if g:viki#use_texmath
+    runtime syntax/texmath.vim
+endif
 
 " On slow machine the extended syntax highlighting can cause some major 
 " slowdown (I'm not really sure what is causing this, but it can be 
@@ -34,26 +39,65 @@ syn match vikiEscapedChar /\\\_./ contains=vikiEscape,vikiChar
 exe 'syn match vikiAnchor /^[[:blank:]]*%\?[[:blank:]]*#'. b:vikiAnchorNameRx .'.*/'
 " syn match vikiMarkers /\(\([#?!+]\)\2\{2,2}\)/
 syn match vikiMarkers /\V\(###\|???\|!!!\|+++\)/
-" syn match vikiSymbols /\(--\|!=\|==\+\|\~\~\+\|<-\+>\|<=\+>\|<\~\+>\|<-\+\|-\+>\|<=\+\|=\+>\|<\~\+\|\~\+>\|\.\.\.\)/
-syn match vikiSymbols /\V\(--\|!=\|==\+\|~~\+\|<-\+>\|<=\+>\|<~\+>\|<-\+\|-\+>\|<=\+\|=\+>\|<~\+\|~\+>\|...\|&\(#\d\+\|\w\+\);\)/
+
+if has('conceal') && &enc == 'utf-8'
+    let s:sym_cluster = []
+    for [s:name, s:chars, s:cchar] in [
+                \ ['Dash', '--', '—'],
+                \ ['Unequal', '!=', '≠'],
+                \ ['Identity', '==', '≡'],
+                \ ['Approx', '~~', '≈'],
+                \ ['ArrowLR', '<-\+>', '↔'],
+                \ ['ArrowL', '<-\+', '←'],
+                \ ['ArrowR', '-\+>', '→'],
+                \ ['ARROWLR', '<=\+>', '⇔'],
+                \ ['ARROWL', '<=\+', '⇐'],
+                \ ['ARROWR', '=\+>', '⇒'],
+                \ ['ArrowTildeLR', '<~\+>', '↭'],
+                \ ['ArrowTildeL', '<~\+', '↜'],
+                \ ['ArrowTildeR', '~\+>', '↝'],
+                \ ['Ellipsis', '...', '…'],
+                \ ]
+        
+        exec 'syn match vikiSymbol'. s:name .' /\V'. s:chars .'/ conceal cchar='. s:cchar
+        call add(s:sym_cluster, s:name)
+    endfor
+    syn match vikiSymbols /\V\(&\(#\d\+\|\w\+\);\)/
+    exec 'syn cluster vikiSymbols contains=vikiSymbols,'. join(s:sym_cluster, ',')
+    unlet s:name s:chars s:cchar s:sym_cluster
+else
+    " syn match vikiSymbols /\(--\|!=\|==\+\|\~\~\+\|<-\+>\|<=\+>\|<\~\+>\|<-\+\|-\+>\|<=\+\|=\+>\|<\~\+\|\~\+>\|\.\.\.\)/
+    syn match vikiSymbols /\V\(--\|!=\|==\+\|~~\+\|<-\+>\|<=\+>\|<~\+>\|<-\+\|-\+>\|<=\+\|=\+>\|<~\+\|~\+>\|...\|&\(#\d\+\|\w\+\);\)/
+    syn cluster vikiSymbols contains=vikiSymbols
+endif
 
 syn cluster vikiHyperLinks contains=vikiLink,vikiExtendedLink,vikiURL,vikiInexistentLink
 
 if b:vikiTextstylesVer == 1
     syn match vikiBold /\(^\|\W\zs\)\*\(\\\*\|\w\)\{-1,}\*/
-    syn region vikiContinousBold start=/\(^\|\W\zs\)\*\*[^ 	*]/ end=/\*\*\|\n\{2,}/ skip=/\\\n/
+    syn region vikiContinousBold start=/\(^\|\W\zs\)\*\*[^ 	*]/ end=/\*\*\|\n\{2,}/ skip=/\\\n/ contains=@Spell
     syn match vikiUnderline /\(^\|\W\zs\)_\(\\_\|[^_\s]\)\{-1,}_/
-    syn region vikiContinousUnderline start=/\(^\|\W\zs\)__[^ 	_]/ end=/__\|\n\{2,}/ skip=/\\\n/
+    syn region vikiContinousUnderline start=/\(^\|\W\zs\)__[^ 	_]/ end=/__\|\n\{2,}/ skip=/\\\n/ contains=@Spell
     syn match vikiTypewriter /\(^\|\W\zs\)=\(\\=\|\w\)\{-1,}=/
-    syn region vikiContinousTypewriter start=/\(^\|\W\zs\)==[^ 	=]/ end=/==\|\n\{2,}/ skip=/\\\n/
-    syn cluster vikiTextstyles contains=vikiBold,vikiContinousBold,vikiTypewriter,vikiContinousTypewriter,vikiUnderline,vikiContinousUnderline,vikiEscapedChar
+    syn region vikiContinousTypewriter start=/\(^\|\W\zs\)==[^ 	=]/ end=/==\|\n\{2,}/ skip=/\\\n/ contains=@Spell
+    syn match vikiColor /\(^\|\W\zs\)'\(\\\*\|\w\)\{-1,}'/
+    syn region vikiContinousColor start=/\(^\|\W\zs\)''[^      _]/ end=/''\|\n\{2,}/ skip=/\\\n/ contains=@Spell
+    syn region vikiExample start=/^>\s*$/ end=/^<\s*$/ fold
+    syn cluster vikiTextstyles contains=vikiBold,vikiContinousBold,vikiTypewriter,vikiContinousTypewriter,vikiUnderline,vikiContinousUnderline,vikiEscapedChar,vikiColor,vikiContinousColor
 else
-    syn region vikiBold start=/\(^\|\W\zs\)__[^ 	_]/ end=/__\|\n\{2,}/ skip=/\\_\|\\\n/ contains=vikiEscapedChar
-    syn region vikiTypewriter start=/\(^\|[^\w`]\zs\)''[^ 	']/ end=/''\|\n\{2,}/ skip=/\\'\|\\\n/ contains=vikiEscapedChar
+    if has('conceal')
+        syn region vikiBold matchgroup=NonText start=/\(^\|\W\zs\)__\ze[^ 	_]/ end=/__\|\n\{2,}/ skip=/\\_\|\\\n/ contains=vikiEscapedChar,@Spell
+                    \ concealends
+        syn region vikiTypewriter matchgroup=NonText start=/\(^\|[^\w`]\zs\)''\ze[^ 	']/ end=/''\|\n\{2,}/ skip=/\\'\|\\\n/ contains=vikiEscapedChar,@Spell
+                    \ concealends
+    else
+        syn region vikiBold start=/\(^\|\W\zs\)__\ze[^ 	_]/ end=/__\|\n\{2,}/ skip=/\\_\|\\\n/ contains=vikiEscapedChar,@Spell
+        syn region vikiTypewriter start=/\(^\|[^\w`]\zs\)''\ze[^ 	']/ end=/''\|\n\{2,}/ skip=/\\'\|\\\n/ contains=vikiEscapedChar,@Spell
+    endif
     syn cluster vikiTextstyles contains=vikiBold,vikiTypewriter,vikiEscapedChar
 endif
 
-syn cluster vikiText contains=@vikiTextstyles,@vikiHyperLinks,vikiMarkers,vikiSymbols
+syn cluster vikiText contains=@Spell,@vikiTextstyles,@vikiHyperLinks,vikiMarkers,@vikiSymbols
 
 " exe 'syn match vikiComment /\V\^\[[:blank:]]\*'. escape(b:vikiCommentStart, '\/') .'\.\*/ contains=@vikiText'
 " syn match vikiComment /^[[:blank:]]*%.*$/ contains=@vikiText
@@ -139,19 +183,15 @@ syn region vikiFilesRegion matchgroup=vikiMacroDelim
 
 
 if g:vikiHighlightMath == 'latex'
-    " if has('conceal')
-    "     syn match vikiTexDollar /\$/ conceal
-    "     syn region vikiTexFormula matchgroup=Comment
-    "                 \ start=/\z(\$\$\?\)/ end=/\z1/
-    "                 \ contains=vikiTexDollar,@texmathMath
-    " else
-        syn region vikiTexFormula matchgroup=Comment
-                    \ start=/\z(\$\$\?\)/ end=/\z1/
-                    \ contains=@texmathMath
-    " endif
+    syn region vikiTexFormula matchgroup=Comment
+                \ start=/\z(\$\$\?\)/ end=/\z1/
+                \ contains=@texmathMath
     syn sync match vikiTexFormula grouphere NONE /^\s*$/
 endif
 
+syn region vikiTexMacro matchgroup=vikiMacroDelim
+            \ start=/{\(ltx\)\([^:{}]*:\)\?/ end=/}/ 
+            \ transparent contains=vikiMacroNames,@texmath
 syn region vikiTexMathMacro matchgroup=vikiMacroDelim
             \ start=/{\(math\>\|\$\)\([^:{}]*:\)\?/ end=/}/ 
             \ transparent contains=vikiMacroNames,@texmathMath
@@ -159,9 +199,6 @@ syn region vikiTexRegion matchgroup=vikiMacroDelim
             \ start=/^[[:blank:]]*#Ltx\>\(\\\n\|.\)\{-}<<\z(.*\)$/ 
             \ end=/^[[:blank:]]*\z1[[:blank:]]*$/ 
             \ contains=@texmathMath
-syn region vikiTexMacro matchgroup=vikiMacroDelim
-            \ start=/{\(ltx\)\([^:{}]*:\)\?/ end=/}/ 
-            \ transparent contains=vikiMacroNames,@texmath
 
 
 syn match vikiList /^[[:blank:]]\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\ze[[:blank:]]/
@@ -291,6 +328,7 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   exe "hi vikiTableRowSep term=bold cterm=bold gui=bold ctermbg=". s:cm2 ."Grey guibg=". s:cm2 ."Grey"
   
   exe "hi vikiSymbols term=bold cterm=bold gui=bold ctermfg=". s:cm1 ."Red guifg=". s:cm1 ."Red"
+
   hi vikiMarkers term=bold cterm=bold gui=bold ctermfg=DarkRed guifg=DarkRed ctermbg=yellow guibg=yellow
   hi vikiAnchor term=italic cterm=italic gui=italic ctermfg=grey guifg=grey
   HiLink vikiComment Comment
@@ -303,6 +341,9 @@ if version >= 508 || !exists("did_viki_syntax_inits")
       HiLink vikiBold vikiContinousBold
       HiLink vikiUnderline vikiContinousUnderline 
       HiLink vikiTypewriter vikiContinousTypewriter
+      hi vikiColor ctermfg=green guifg=green
+      hi vikiContinousColor ctermfg=green guifg=green
+      hi vikiExample ctermfg=cyan guifg=cyan
   else
       " hi vikiBold term=italic,bold cterm=italic,bold gui=italic,bold
       hi vikiBold term=bold,underline cterm=bold,underline gui=bold

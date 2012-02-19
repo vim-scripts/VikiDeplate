@@ -2,8 +2,8 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 2012-01-20.
-" @Revision: 482
+" @Last Change: 2012-02-19.
+" @Revision: 487
 
 if exists("b:did_ftplugin") "{{{2
     finish
@@ -92,6 +92,10 @@ setlocal expandtab
 setlocal iskeyword+={
 setlocal iskeyword-=_
 
+if g:vikiFoldLevel > 0 && &l:foldlevel == 0
+    let &l:foldlevel = g:vikiFoldLevel
+endif
+
 if has('balloon_multiline')
     call tlib#balloon#Register('viki#Balloon()')
 endif
@@ -103,6 +107,8 @@ map <buffer> <silent> [[ :call viki#FindPrevHeading()<cr>
 map <buffer> <silent> ][ :call viki#FindNextHeading()<cr>
 map <buffer> <silent> ]] ][
 map <buffer> <silent> [] [[
+vnoremap <buffer> <expr> ii viki#ListItemTextObject()
+omap <buffer> ii :normal Vii<cr>
 
 let b:undo_ftplugin = 'setlocal iskeyword< expandtab< foldtext< foldexpr< foldmethod< comments< commentstring< '
             \ .'define< include<'
@@ -114,6 +120,10 @@ let b:undo_ftplugin = 'setlocal iskeyword< expandtab< foldtext< foldexpr< foldme
             \ .'| unmap <buffer> []'
 
 let b:vikiEnabled = 2
+
+if g:vikiAutoupdateFiles
+    call viki#FilesUpdateAll()
+endif
 
 if exists('*VikiFoldLevel') || g:vikiFoldMethodVersion == 0 "{{{2
     finish

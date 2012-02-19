@@ -2,8 +2,8 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2012-01-21.
-" @Revision:    2724
+" @Last Change: 2012-02-18.
+" @Revision:    2737
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -40,7 +40,7 @@ if !exists('g:loaded_tlib') || g:loaded_tlib < 39
         finish
     endif
 endif
-let loaded_viki = 320
+let loaded_viki = 400
 
 
 if !exists("tlist_viki_settings")
@@ -71,14 +71,15 @@ if !exists("g:vikiMarkInexistent")
 endif
 
 if !exists("g:vikiHighlightMath")
-    let g:vikiHighlightMath = '' "{{{2
+    " If "latex", use the texmathMath |syn-cluster| to highlight 
+    " mathematical formulas.
+    let g:vikiHighlightMath = 'latex' "{{{2
 endif
 
 if !exists("g:vikiNameSuffix")
-    " Default file suffix (including the optional period, e.g. '.txt' or 
-    " '.viki').
+    " Default file suffix (including the optional period, e.g. '.viki').
     " Can also be buffer-local.
-    let g:vikiNameSuffix = "" "{{{2
+    let g:vikiNameSuffix = ".viki" "{{{2
 endif
 
 if !exists("g:vikiIndex")
@@ -94,7 +95,18 @@ endif
 
 if !exists("g:vikiSaveHistory")
     " If non-nil, cache back-links information
-    let g:vikiSaveHistory = 0 "{{{2
+    let g:vikiSaveHistory = index(split(&viminfo, ','), '!') != -1 "{{{2
+endif
+
+if !exists('g:vikiAutoupdateFiles')
+    " If true, automatically update all |viki-files| regions.
+    let g:vikiAutoupdateFiles = 0   "{{{2
+endif
+
+if !exists('g:vikiFoldLevel')
+    " If > 0, set the 'foldlevel' of viki files to this value. (This is 
+    " only useful if 'foldlevel' still has the default value of 0.)
+    let g:vikiFoldLevel = 5   "{{{2
 endif
 
 
@@ -219,6 +231,10 @@ command! VikiHome :call viki#HomePage()
 " Open the |viki-homepage|.
 command! VIKI :call viki#HomePage()
 
+
+if !empty('g:vikiNameSuffix')
+    exec 'autocmd filetypedetect BufRead,BufNewFile *'. g:vikiNameSuffix .' setf viki'
+endif
 
 augroup viki
     au!
