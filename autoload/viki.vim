@@ -3,11 +3,11 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
-" @Last Change: 2012-02-19.
-" @Revision:    0.909
+" @Last Change: 2012-03-23.
+" @Revision:    0.918
 
 
-exec 'runtime! autoload/viki/enc_'. &enc .'.vim'
+exec 'runtime! autoload/viki/enc_'. substitute(&enc, '[\/<>*+&:?]', '_', 'g') .'.vim'
 
 """ General {{{1
 
@@ -89,6 +89,7 @@ if !exists("g:vikiSpecialFiles") "{{{2
     " Can also be buffer-local.
     " :read: let g:vikiSpecialFiles = [...] "{{{2
     let g:vikiSpecialFiles = [
+                \ '3gp',
                 \ 'aac',
                 \ 'aif',
                 \ 'aiff',
@@ -516,9 +517,11 @@ if !exists("g:vikiOpenFileWith_ANY")
         let g:vikiOpenFileWith_ANY = "exec 'silent ! start \"\" '. shellescape('%{FILE}')"
     elseif has("mac")
         let g:vikiOpenFileWith_ANY = "exec 'silent !open '. shellescape('%{FILE}')"
+    elseif exists('$XDG_CURRENT_DESKTOP') && !empty($XDG_CURRENT_DESKTOP)
+        let g:vikiOpenFileWith_ANY = "exec 'silent !xdg-open '. shellescape('%{FILE}')"
     elseif $GNOME_DESKTOP_SESSION_ID != "" || $DESKTOP_SESSION == 'gnome'
         let g:vikiOpenFileWith_ANY = "exec 'silent !gnome-open '. shellescape('%{FILE}')"
-    elseif $KDEDIR != ""
+    elseif exists("$KDEDIR") && !empty($KDEDIR)
         let g:vikiOpenFileWith_ANY = "exec 'silent !kfmclient exec '. shellescape('%{FILE}')"
     endif
 endif
@@ -613,6 +616,8 @@ if !exists("g:vikiOpenUrlWith_ANY")
         let g:vikiOpenUrlWith_ANY = "exec 'silent ! RunDll32.EXE URL.DLL,FileProtocolHandler '. shellescape('%{URL}', 1)"
     elseif has("mac")
         let g:vikiOpenUrlWith_ANY = "exec 'silent !open '. escape('%{URL}', ' &!%')"
+    elseif exists('$XDG_CURRENT_DESKTOP') && !empty($XDG_CURRENT_DESKTOP)
+        let g:vikiOpenFileWith_ANY = "exec 'silent !xdg-open '. shellescape('%{URL}')"
     elseif $GNOME_DESKTOP_SESSION_ID != ""
         let g:vikiOpenUrlWith_ANY = "exec 'silent !gnome-open '. shellescape('%{URL}')"
     elseif $KDEDIR != ""
@@ -713,6 +718,14 @@ endf
 function! s:EditWrapper(cmd, fname) "{{{3
     " TLogVAR a:cmd, a:fname
     let fname = escape(simplify(a:fname), ' %#')
+    if g:vikiDirSeparator == '\' && fname !~ '^\w\+://'
+        let fname = substitute(fname, '/', '\\', 'g')
+        " TLogVAR fname
+    endif
+    if a:cmd =~ '^\(silent\s\+\)\?!'
+        let fname = shellescape(fname)
+        " TLogVAR fname
+    endif
     " let fname = escape(simplify(a:fname), '%#')
     if a:cmd =~ g:vikiNoWrapper
         " TLogDBG a:cmd .' '. fname
@@ -1671,8 +1684,7 @@ function! viki#SetAnchorMarks() "{{{3
     let sr  = @/
     let anchorRx = viki#GetAnchorRx('m\zs\[a-zA-Z]\ze\s\*\$')
     " TLogVAR anchorRx
-    " exec 'silent keepjumps g /'. anchorRx .'/exec "norm! m". substitute(getline("."), anchorRx, ''\2'', "")'
-    exec 'silent keepjumps g /'. anchorRx .'/exec "norm! m". matchstr(getline("."), anchorRx)'
+    exec 'silent! keepjumps g /'. anchorRx .'/exec "norm! m". matchstr(getline("."), anchorRx)'
     let @/ = sr
     " TLogVAR pos
     " call setpos('.', pos)
