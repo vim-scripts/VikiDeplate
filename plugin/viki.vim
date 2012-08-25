@@ -2,8 +2,8 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2012-03-25.
-" @Revision:    2740
+" @Last Change: 2012-08-24.
+" @Revision:    2744
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -31,7 +31,7 @@ if !exists('g:loaded_tlib') || g:loaded_tlib < 39
         finish
     endif
 endif
-let loaded_viki = 401
+let loaded_viki = 402
 
 
 if !exists("tlist_viki_settings")
@@ -207,7 +207,7 @@ command! -nargs=+ VikiDefine call VikiDefine(<f-args>)
 
 " NOTE: Be aware that we cannot highlight a reference if the text is embedded 
 " in syntax group that doesn't allow inclusion of arbitrary syntax elemtents.
-command! -nargs=? -bar VikiMinorMode call viki#DispatchOnFamily('MinorMode', empty(<q-args>) && exists('b:vikiFamily') ? b:vikiFamily : <q-args>, 1)
+command! -nargs=? -bar VikiMinorMode call viki#MinorMode(empty(<q-args>) && exists('b:vikiFamily') ? b:vikiFamily : <q-args>)
 command! -nargs=? -bar VikiMinorModeMaybe echom "Deprecated command: VikiMinorModeMaybe" | VikiMinorMode <q-args>
 command! VikiMinorModeViki call viki_viki#MinorMode(1)
 command! VikiMinorModeLaTeX call viki_latex#MinorMode(1)
@@ -231,6 +231,7 @@ command! VIKI :call viki#HomePage()
 
 if !empty('g:vikiNameSuffix')
     exec 'autocmd filetypedetect BufRead,BufNewFile *'. g:vikiNameSuffix .' setf viki'
+    let g:ft_ignore_pat = '\('. g:ft_ignore_pat .'\|'. tlib#rx#Escape(g:vikiNameSuffix) .'$\)'
 endif
 
 augroup viki

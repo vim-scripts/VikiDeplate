@@ -3,8 +3,19 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-09-03.
-" @Last Change: 2011-12-04.
-" @Revision:    0.0.145
+" @Last Change: 2012-08-23.
+" @Revision:    0.0.186
+
+
+if !exists('g:viki_viki#conceal_extended_link_markup')
+    " If true, |conceal| the markup of extended links with names.
+    let g:viki_viki#conceal_extended_link_markup = has('conceal')   "{{{2
+endif
+
+if !exists('g:viki_viki#conceal_extended_link_cchar')
+    " If |conceal| is used, append this character to links.
+    let g:viki_viki#conceal_extended_link_cchar = '^'  "{{{2
+endif
 
 
 """ viki/deplate {{{1
@@ -218,11 +229,18 @@ endf
 
 " Define viki core syntax groups for hyperlinks
 function! viki_viki#DefineMarkup(state) "{{{3
+    " TLogVAR a:state
     if viki#IsSupportedType("sS") && b:vikiSimpleNameSimpleRx != ""
         exe "syntax match vikiLink /" . b:vikiSimpleNameSimpleRx . "/"
     endif
     if viki#IsSupportedType("e") && b:vikiExtendedNameSimpleRx != ""
-        exe "syntax match vikiExtendedLink '" . b:vikiExtendedNameSimpleRx . "' skipnl"
+        if g:viki_viki#conceal_extended_link_markup && has('conceal')
+            let cchar = empty(g:viki_viki#conceal_extended_link_cchar) ? '' : ('cchar='. g:viki_viki#conceal_extended_link_cchar)
+            exe 'syntax region vikiExtendedLinkInfo matchgroup=vikiExtendedLinkMarkup start=/\[\[\(\(\\\[\|[^]]\)\+\]\[\)\?/ end=/\][!*]\?\]/ concealends '. cchar .' contained containedin=vikiExtendedLink'
+            exe "syntax match vikiExtendedLink '" . b:vikiExtendedNameSimpleRx . "' skipnl contains=vikiExtendedLinkInfo"
+        else
+            exe "syntax match vikiExtendedLink '" . b:vikiExtendedNameSimpleRx . "' skipnl"
+        endif
     endif
     if viki#IsSupportedType("u") && b:vikiUrlSimpleRx != ""
         exe "syntax match vikiURL /" . b:vikiUrlSimpleRx . "/"
@@ -242,7 +260,8 @@ function! viki_viki#DefineHighlighting(state) "{{{3
     endif
     if viki#IsSupportedType("e")
         hi def link vikiExtendedLink vikiHyperLink
-        hi def link vikiExtendedOkLink vikiHyperLink
+        hi def link vikiExtendedLinkInfo vikiHyperLink
+        hi def link vikiExtendedLinkMarkup vikiHyperLink
         hi def link vikiRevExtendedLink Normal
     endif
     if viki#IsSupportedType("u")
