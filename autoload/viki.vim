@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
-" @Last Change: 2012-08-24.
-" @Revision:    0.998
+" @Last Change: 2012-09-24.
+" @Revision:    0.1112
 
 
 exec 'runtime! autoload/viki/enc_'. substitute(&enc, '[\/<>*+&:?]', '_', 'g') .'.vim'
@@ -211,6 +211,12 @@ if !exists("g:vikiExplorer")
     let g:vikiExplorer = "Sexplore" "{{{2
 endif
 
+if !exists('g:viki#cmd_no_fnameescape')
+    " A |regexp| matching commands for which the filename should not be 
+    " pre-processed with |fnameescape()| when opening a file.
+    let g:viki#cmd_no_fnameescape = '^\(\ue\|E\)xplore\>'   "{{{2
+endif
+
 if !exists("g:vikiHide")
     " If hide or update: use the respective command when leaving a buffer
     " If a dirty buffers gets hidden, vim usually complains. This can be 
@@ -367,6 +373,48 @@ endif
 if !exists("g:vikiMapFunctionalityMinor")
     " Define which keys to map in minor mode (invoked via :VikiMinorMode)
     let g:vikiMapFunctionalityMinor = 'f b p mf mb tF c q e' "{{{2
+endif
+
+if !exists("g:vikiFoldMethodVersion")
+    " :nodoc:
+    " Choose folding method version
+    " Viki supports several methods (1..7) for defining folds. If you 
+    " find that text entry is slowed down it is probably due to the 
+    " chosen fold method. You could try to use another method (see 
+    " ../ftplugin/viki.vim for alternative methods) or check out this 
+    " vim tip:
+    " http://vim.wikia.com/wiki/Keep_folds_closed_while_inserting_text
+    let g:vikiFoldMethodVersion = 8 "{{{2
+endif
+
+if !exists("g:vikiFoldBodyLevel")
+    " Consider fold levels bigger that this as text body, levels smaller 
+    " than this as headings
+    " This variable is only used if |g:vikiFoldMethodVersion| is 1.
+    " If set to 0, the "b" mode in |vikiFolds| will set the body level 
+    " depending on the headings used in the current buffer. Otherwise 
+    " |b:vikiHeadingMaxLevel| + 1 will be used.
+    let g:vikiFoldBodyLevel = 6 "{{{2
+endif
+
+if !exists("g:vikiFolds")
+    " Define which elements should be folded:
+    "     h :: Heading
+    "     H :: Headings (but inverse folding)
+    "     l :: Lists
+    "     b :: The body has max heading level + 1. This is slightly faster 
+    "       than the other version as vim never has to scan the text; but 
+    "       the behaviour may vary depending on the sequence of headings if 
+    "       |vikiFoldBodyLevel| is set to 0.
+    "     f :: Files regions.
+    "     s :: ???
+    " This variable is only used if |g:vikiFoldMethodVersion| is 1.
+    let g:vikiFolds = 'hf' "{{{2
+endif
+
+if !exists("g:vikiFoldsContext") "{{{2
+    " Context lines for folds
+    let g:vikiFoldsContext = [2, 2, 2, 2]
 endif
 
 if !exists('g:viki#files_head_rx')
@@ -716,29 +764,37 @@ endf
 " this function.
 function! s:EditWrapper(cmd, fname) "{{{3
     " TLogVAR a:cmd, a:fname
-    let fname = escape(simplify(a:fname), ' %#')
+    let fname = simplify(a:fname)
     if g:vikiDirSeparator == '\' && fname !~ '^\w\+://'
         let fname = substitute(fname, '/', '\\', 'g')
         " TLogVAR fname
     endif
-    if a:cmd =~ '^\(silent\s\+\)\?!'
+    if a:cmd =~ '^\(silent!\?\s\+\)\?!'
+        " TLogVAR 1
+        let fname = escape(fname, '%#')
         let fname = shellescape(fname)
         " TLogVAR fname
+    elseif a:cmd !~ g:viki#cmd_no_fnameescape
+        " TLogVAR 2
+        let fname = fnameescape(fname)
+    else
+        " TLogVAR 3
+        let fname = escape(fname, '%#')
     endif
     " let fname = escape(simplify(a:fname), '%#')
     if a:cmd =~ g:vikiNoWrapper
         " TLogDBG a:cmd .' '. fname
         " echom 'No wrapper: '. a:cmd .' '. fname
-        exec a:cmd .' '. fname
+        exec a:cmd fname
     else
         try
             if g:vikiHide == 'hide'
                 " TLogDBG 'hide '. a:cmd .' '. fname
-                exec 'hide '. a:cmd .' '. fname
+                exec 'hide' a:cmd fname
             elseif g:vikiHide == 'update'
+                " TLogDBG 'update | '. a:cmd .' '. fname
                 update
-                " TLogDBG a:cmd .' '. fname
-                exec a:cmd .' '. fname
+                exec a:cmd fname
             else
                 let pre = ''
                 if &modified && !&hidden
@@ -1692,7 +1748,7 @@ endf
 " Open a filename in a certain window and jump to an anchor if any
 " viki#OpenLink(filename, anchor, ?create=0, ?postcmd='', ?wincmd=0)
 function! viki#OpenLink(filename, anchor, ...) "{{{3
-    " TLogVAR a:filename
+    " TLogVAR a:filename, a:anchor
     let create  = a:0 >= 1 ? a:1 : 0
     let postcmd = a:0 >= 2 ? a:2 : ''
     if a:0 >= 3
@@ -1712,8 +1768,8 @@ function! viki#OpenLink(filename, anchor, ...) "{{{3
     if exists('*simplify')
         let filename = simplify(filename)
     endif
-    " TLogVAR filename
     let buf = bufnr('^'. filename .'$')
+    " TLogVAR filename, buf, bufloaded(buf), create, exists('b:editVikiPage')
     call viki#SetWindow(winNr)
     if buf >= 0 && bufloaded(buf)
         call s:EditLocalFile('buffer', buf, fi, li, co, a:anchor)
@@ -1733,7 +1789,7 @@ endf
 
 " Open a local file in vim
 function! s:EditLocalFile(cmd, fname, fi, li, co, anchor) "{{{3
-    " TLogVAR a:cmd, a:fname
+    " TLogVAR a:cmd, a:fname, a:fi, a:li, a:co, a:anchor
     let vf = viki#Family()
     let cb = bufnr('%')
     call tlib#dir#Ensure(fnamemodify(a:fname, ':p:h'))
@@ -1881,6 +1937,11 @@ function! s:OpenLink(dest, anchor, winNr)
     let b:vikiNextWindow = a:winNr
     " TLogVAR a:dest, a:anchor, a:winNr
     try
+        " TLogVAR viki#IsSpecialProtocol(a:dest)
+        " TLogVAR viki#IsSpecialFile(a:dest)
+        " TLogVAR isdirectory(a:dest)
+        " TLogVAR filereadable(a:dest)
+        " TLogVAR bufexists(a:dest), buflisted(a:dest)
         if viki#IsSpecialProtocol(a:dest)
             let url = viki#MakeUrl(a:dest, a:anchor)
             " TLogVAR url
@@ -2833,6 +2894,23 @@ fun! viki#FilesUpdate() "{{{3
     call viki#DirListing(lh, lb, indent)
 endf
 
+" Update a #Files region. The following arguments are allowed to specify 
+" how the file list should be displayed:
+"
+"     glob=PATTERN ... A file pattern with |wildcards|. % and # (see 
+"                      |cmdline-special|) are expanded too.
+"     head=NUMBER .... Display the first N lines of the file's content
+"     list=detail .... Include additional file info
+"     list=flat ...... Display a flat list
+"     types=[fd] ..... Whether to display files (f) and directories (d)
+"     filter=REGEXP .. List only those files matching a |regexp|
+"     exclude=REGEXP . Don't list files matching a |regexp|
+"     sort=name|time|head ... Sort the list on the files' names, times, 
+"                      or head lines. If the argument begins with "-", 
+"                      the list is displayed in reverse order.
+"
+" Comments (i.e. text after the file link) are maintained if possible 
+" and if list is not "detail".
 fun! viki#DirListing(lhs, lhb, indent) "{{{3
     let args = s:GetRegionArgs(a:lhs, a:lhb - 1)
     " TLogVAR args
@@ -2847,7 +2925,13 @@ fun! viki#DirListing(lhs, lhb, indent) "{{{3
             let patt = tlib#file#Join([expand('%:p:h'), patt])
         endif
         " TLogVAR patt
-        let s:dirlisting_depth0 = s:GetDepth(split(patt, '[*?]')[0])
+        if patt =~ '^[^\\/*?]*[*?]'
+            let s:dirlisting_depth0 = 0
+        else
+            let patt_parts = split(patt, '[*?]')
+            " TLogVAR patt_parts
+            let s:dirlisting_depth0 = s:GetDepth(patt_parts[0])
+        endif
         let view = winsaveview()
         let t = @t
         try
@@ -2873,9 +2957,35 @@ fun! viki#DirListing(lhs, lhb, indent) "{{{3
             endif
             if !empty(ls)
                 let list = split(get(args, 'list', ''), ',\s*')
-                let head = 0 + get(args, 'head', '0')
+                let head = str2nr(get(args, 'head', '0'))
+                let s:files_options = {}
+                let sort = get(args, 'sort', '')
+                if !empty(sort)
+                    if sort =~ '^-'
+                        let s:files_options.sort_order = -1
+                    else
+                        let s:files_options.sort_order = 1
+                    endif
+                    let sort = substitute(sort, '^[+-]', '', '')
+                    if sort == 'name'
+                        let s:files_options.sort_on = 'filename'
+                    elseif sort == 'time'
+                        let s:files_options.ftime = 1
+                        let s:files_options.sort_on = 'ftime'
+                    elseif sort == 'head'
+                        let s:files_options.head = 1
+                        let s:files_options.sort_on = 'head'
+                    else
+                        throw "viki: #Files: sort must be either name, time, or head but was ". string(sort)
+                    endif
+                endif
                 let s:getfileentry_deep = 0
-                call map(ls, 'a:indent.s:GetFileEntry(v:val, deep, list, head)')
+                let ls = map(ls, 's:GetFileEntry(v:val, deep, list, head, s:files_options)')
+                if !empty(sort)
+                    let ls = sort(ls, 's:SortFiles')
+                endif
+                unlet s:files_options
+                let ls = map(ls, 'a:indent . v:val.filename')
                 let @t = join(ls, "\<c-j>") ."\<c-j>"
                 " TLogVAR a:lhb
                 exec 'norm! '. a:lhb .'G"t'. (a:lhb > line('$') ? 'p' : 'P')
@@ -2887,22 +2997,35 @@ fun! viki#DirListing(lhs, lhb, indent) "{{{3
     endif
 endf
 
-fun! s:GetFileEntry(file, deep, list, head) "{{{3
+
+function! s:SortFiles(i1, i2) "{{{3
+    let sort_on = s:files_options.sort_on
+    let i1 = get(a:i1, sort_on)
+    let i2 = get(a:i2, sort_on)
+    let rv = i1 == i2 ? 0 : i1 > i2 ? 1 : -1
+    return rv * s:files_options.sort_order
+endf
+
+
+fun! s:GetFileEntry(file, deep, list, head, options) "{{{3
     let f = []
+    let props = {}
     let d = s:GetDepth(a:file) - s:dirlisting_depth0
     let attr = []
     let is_dir = 0
     if index(a:list, 'detail') != -1
-        let type = getftype(a:file)
-        if type != 'file'
-            if type == 'dir'
+        let props.type = getftype(a:file)
+        if props.type != 'file'
+            if props.type == 'dir'
                 let is_dir = 1
             else
-                call add(attr, type)
+                call add(attr, props.type)
             endif
         endif
-        call add(attr, strftime('%c', getftime(a:file)))
-        call add(attr, getfperm(a:file))
+        let props.ftime = strftime('%Y-%m-%d %H:%M:%S', getftime(a:file))
+        call add(attr, props.ftime)
+        let props.fperm = getfperm(a:file)
+        call add(attr, props.fperm)
     else
         if isdirectory(a:file)
             let is_dir = 1
@@ -2932,17 +3055,36 @@ fun! s:GetFileEntry(file, deep, list, head) "{{{3
         call add(f, ' {'. join(attr, '|') .'}')
     endif
     if a:head > 0 && !isdirectory(a:file)
-        let lines = readfile(a:file, '', a:head)
-        let lines = filter(lines, 'v:val =~ ''\S''')
-        let lines = map(lines, 'substitute(v:val, g:viki#files_head_rx, "", "g")')
-        call add(f, ' -- '. join(lines, '|'))
+        let props.head = s:GetHead(a:file, a:head)
+        call add(f, ' -- '. props.head)
     else
+        if get(a:options, 'head', 0)
+            let props.head = s:GetHead(a:file, a:options.head)
+        endif
         let c = get(s:savedComments, a:file, '')
+        " TLogVAR a:file, c
         if !empty(c)
             call add(f, c)
         endif
     endif
-    return join(f, '')
+    if get(a:options, 'ftime', 0) && !has_key(props, 'ftime')
+        let props.ftime = strftime('%Y-%m-%d %H:%M:%S', getftime(a:file))
+    endif
+    let props.filename = join(f, '')
+    return props
+endf
+
+function! s:GetHead(file, head) "{{{3
+    let lines = readfile(a:file, '', a:head)
+    let lines = filter(lines, 'v:val =~ ''\S''')
+    let lines = map(lines, 'substitute(v:val, g:viki#files_head_rx, "", "g")')
+    let head_text = join(lines, '|')
+    " TLogVAR &l:fenc, &l:enc, head_text
+    if &l:fenc != &l:enc && has('iconv')
+        let head_text = iconv(head_text, &l:fenc, &l:enc)
+        " TLogVAR head_text
+    endif
+    return head_text
 endf
 
 fun! s:GetDepth(file) "{{{3
@@ -3034,7 +3176,10 @@ fun! s:GetRegionGeometry(...) "{{{3
             else
                 let hbe = search(rx_end, 'W')
             endif
-            " TLogVAR hds, hde, hbe
+            if hbe == 0 && empty(hdm[5])
+                let hbe = line('$') + 1
+            endif
+            " TLogVAR hdm, hds, hde, hbe
             if hds > 0 && hde > 0 && hbe > 0
                 return [hds, hde + 1, hbe, hdi]
             else
@@ -3057,7 +3202,7 @@ fun! s:DeleteRegionBody(...) "{{{3
         let [lh, lb, le, indent] = s:GetRegionGeometry('Files')
     endif
     " TLogVAR lb, le
-    if le <= line('$')
+    if le <= line('$') + 1
         call s:SaveComments(lb, le - 1)
         if le > lb
             exec 'norm! '. lb .'Gd'. (le - 1) .'G'
@@ -3072,17 +3217,19 @@ fun! s:SaveComments(lb, le) "{{{3
         let t = getline(l)
         let k = viki#FilesGetFilename(t)
         if !empty(k)
-            let s:savedComments[k] = viki#FilesGetComment(t)
+            let comment = viki#FilesGetComment(t)
+            let s:savedComments[k] = comment
+            " TLogVAR k, t, comment
         endif
     endfor
 endf
 
 fun! viki#FilesGetFilename(t) "{{{3
-    return matchstr(a:t, '^\s*\[\[\zs.\{-}\ze\]!\]')
+    return matchstr(a:t, '^\s*[`_+|\\-]*\s*\[\[\zs.\{-}\ze\]\(\[\|!\]\)')
 endf
 
 fun! viki#FilesGetComment(t) "{{{3
-    return matchstr(a:t, '^\s*\[\[.\{-}\]!\]\( {.\{-}}\)\?\zs.*')
+    return matchstr(a:t, '^\s*[`_+|\\-]*\s*\[\[.\{-}\]!\]\( {.\{-}}\)\?\zs.*')
 endf
 
 
@@ -3203,10 +3350,11 @@ endf
 
 
 " :doc:
-" The following two functions can be used with the tinymode plugin to 
-" move around list items. 
+" If the |tinykeymap| plugin is installed, a gl map is created to move 
+" around list items.
 "
-" Example configuration: >
+" If you use the tinymode plugin, add the following to lines to your 
+" |vimrc| file:
 "
 "   call tinymode#EnterMap("listitem_move", "gl")
 "   call tinymode#ModeMsg("listitem_move", "Move list item: h/j/k/l")
@@ -3267,4 +3415,103 @@ function! viki#MoveListItem(direction) "{{{3
     endtry
 endf
 
+
+function! s:VikiFolds() "{{{3
+    let vikiFolds = tlib#var#Get('vikiFolds', 'bg')
+    " TLogVAR vikiFolds
+    if vikiFolds == 'ALL'
+        let vikiFolds = 'hlsfb'
+        " let vikiFolds = 'hHlsfb'
+    elseif vikiFolds == 'DEFAULT'
+        let vikiFolds = 'hf'
+    endif
+    " TLogVAR vikiFolds
+    return vikiFolds
+endf
+
+
+func s:NumericSort(i1, i2)
+    return a:i1 == a:i2 ? 0 : a:i1 > a:i2 ? 1 : -1
+endfunc
+
+
+function viki#FoldLevel(lnum)
+    let vikiFolds = s:VikiFolds()
+    if vikiFolds == ''
+        " TLogDBG 'no folds'
+        return
+    endif
+    let new = 0
+    let level = 1
+    if vikiFolds =~? 'h'
+        let hd_lnums = map(keys(b:viki_headings), 'str2nr(v:val)')
+        let hd_lnums = filter(hd_lnums, 'v:val <= a:lnum')
+        " TLogVAR hd_lnums
+        if !empty(hd_lnums)
+            let hd_lnums = sort(hd_lnums, 's:NumericSort')
+            let hd_lnum = hd_lnums[-1]
+            let level = b:viki_headings[''. hd_lnum]
+            if hd_lnum == a:lnum
+                let new = 1
+            endif
+            " TLogVAR hd_lnums, hd_lnum, level
+        endif
+        if vikiFolds =~# 'H'
+            let max_level = max(values(b:viki_headings))
+            let level = max_level - level + 1
+        endif
+    endif
+    if vikiFolds =~# 'l'
+        let level += matchend(getline(prevnonblank(a:lnum)), '^\s\+') / &shiftwidth
+    endif
+    " TLogVAR a:lnum, level
+    return new ? '>'. level : level
+endf
+
+
+function! viki#FoldText() "{{{3
+  let line = getline(v:foldstart)
+  if synIDattr(synID(v:foldstart, 1, 1), 'name') =~ '^vikiFiles'
+      let line = fnamemodify(viki#FilesGetFilename(line), ':h')
+  else
+      let ctxtlev = tlib#var#Get('vikiFoldsContext', 'wbg')
+      let ctxt    = get(ctxtlev, v:foldlevel, 0)
+      " TLogVAR ctxt
+      " TLogDBG type(ctxt)
+      if type(ctxt) == 3
+          let [ctxtbeg, ctxtend] = ctxt
+      else
+          let ctxtbeg = 1
+          let ctxtend = ctxt
+      end
+      let line = matchstr(line, '^\s*\zs.*$')
+      for li in range(ctxtbeg, ctxtend)
+          let li = v:foldstart + li
+          if li > v:foldend
+              break
+          endif
+          let lp = matchstr(getline(li), '^\s*\zs.\{-}\ze\s*$')
+          if !empty(lp)
+              let lp = substitute(lp, '\s\+', ' ', 'g')
+              let line .= ' | '. lp
+          endif
+      endfor
+  endif
+  return v:folddashes . line
+endf
+
+
+function! viki#UpdateHeadings() "{{{3
+    let viki_headings = {}
+    let pos = getpos('.')
+    try
+        silent! g/^\*\+\s/let viki_headings[line('.')] = matchend(getline('.'), '^\*\+\s')
+    finally
+        call setpos('.', pos)
+    endtry
+    if !exists('b:viki_headings') || b:viki_headings != viki_headings
+        let b:viki_headings = viki_headings
+    endif
+    " TLogVAR len(viki_headings)
+endf
 
