@@ -2,8 +2,8 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2012-08-28.
-" @Revision:    2748
+" @Last Change: 2013-10-02.
+" @Revision:    2752
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -24,14 +24,14 @@
 if &cp || exists("loaded_viki")
     finish
 endif
-if !exists('g:loaded_tlib') || g:loaded_tlib < 39
+if !exists('g:loaded_tlib') || g:loaded_tlib < 106
     runtime plugin/02tlib.vim
-    if !exists('g:loaded_tlib') || g:loaded_tlib < 39
-        echoerr 'tlib >= 0.39 is required'
+    if !exists('g:loaded_tlib') || g:loaded_tlib < 106
+        echoerr 'tlib >= 1.06 is required'
         finish
     endif
 endif
-let loaded_viki = 404
+let loaded_viki = 405
 
 
 if !exists("tlist_viki_settings")
@@ -113,6 +113,7 @@ endif
 " Can also be buffer-local.
 " :read: let g:vikiSplit = NO DEFAULT
 
+" :doc:
 " If non-nil, simple viki names are disabled.
 " :read: let b:vikiNoSimpleNames = 0 "{{{2
 

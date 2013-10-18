@@ -2,8 +2,8 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     12-Jän-2004.
-" @Last Change: 2012-09-07.
-" @Revision: 522
+" @Last Change: 2013-03-04.
+" @Revision: 524
 
 if exists("b:did_ftplugin") "{{{2
     finish
@@ -72,7 +72,7 @@ let b:undo_ftplugin = 'setlocal iskeyword< expandtab< foldtext< foldexpr< foldme
             \ .'| unmap <buffer> []'
 
 if g:vikiAutoupdateFiles
-    call viki#FilesUpdateAll()
+    call viki#FilesRegionUpdateAll()
 endif
 
 if g:vikiFoldMethodVersion == 0 "{{{2
@@ -81,7 +81,8 @@ else
     setlocal foldmethod=expr
     setlocal foldexpr=viki#FoldLevel(v:lnum)
     setlocal foldtext=viki#FoldText()
-    autocmd viki CursorHold,CursorHoldI,InsertLeave <buffer> call viki#UpdateHeadings()
+    " autocmd viki CursorHold,CursorHoldI,InsertLeave <buffer> call viki#UpdateHeadings()
+    autocmd viki CursorHold,CursorHoldI <buffer> call viki#UpdateHeadings()
     call viki#UpdateHeadings()
 endif
 

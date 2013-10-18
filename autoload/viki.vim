@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
-" @Last Change: 2012-09-24.
-" @Revision:    0.1112
+" @Last Change: 2013-10-16.
+" @Revision:    1336
 
 
 exec 'runtime! autoload/viki/enc_'. substitute(&enc, '[\/<>*+&:?]', '_', 'g') .'.vim'
@@ -54,10 +54,10 @@ endif
 "     search text. The expression has to conform to the very nomagic |/\V| 
 "     syntax.
 
-" Characters allowed in anchors
-" Defaults to:
-" [b:vikiLowerCharacters][b:vikiLowerCharacters +  b:vikiUpperCharacters + '_0-9]*
 if !exists('g:vikiAnchorNameRx')
+    " Characters allowed in anchors
+    " Defaults to:
+    " [b:vikiLowerCharacters][b:vikiLowerCharacters +  b:vikiUpperCharacters + '_0-9]*
     let g:vikiAnchorNameRx = '' "{{{2
 endif
 
@@ -91,6 +91,7 @@ if !exists("g:vikiSpecialFiles") "{{{2
     let g:vikiSpecialFiles = [
                 \ '3gp',
                 \ 'aac',
+                \ 'accdb',
                 \ 'aif',
                 \ 'aiff',
                 \ 'au',
@@ -108,6 +109,7 @@ if !exists("g:vikiSpecialFiles") "{{{2
                 \ 'jpeg',
                 \ 'jpg',
                 \ 'm3u',
+                \ 'mdb',
                 \ 'mhtml',
                 \ 'mp1',
                 \ 'mp2',
@@ -366,6 +368,7 @@ if !exists("g:vikiMapFunctionality")
     " q     ... quote
     " tF    ... tab as find
     " Files ... #Files related
+    " Grep  ... #Grep related
     " let g:vikiMapFunctionality      = 'mf mb tF c q e i I Files'
     let g:vikiMapFunctionality      = 'ALL' "{{{2
 endif
@@ -429,6 +432,24 @@ if !exists('g:viki#use_texmath')
     " mathematical formulas.
     let g:viki#use_texmath = 1   "{{{2
 endif
+
+if !exists('g:viki#code_syntax')
+    " A list of filetypes for which to always enable syntax highlighting 
+    " of #Code regions.
+    "
+    " The buffer is scanned once for #Code regions with known filetypes. 
+    " New #Code regions may not be properly highlighted. You can 
+    " circumvent this problem by adding names of frequently used 
+    " syntaxes/filetypes.
+    let g:viki#code_syntax = []   "{{{2
+endif
+
+if !exists('g:viki#code_syntax_map')
+    " A dictionary that maps syntaxes for #Code regions to vim 
+    " filetypes.
+    let g:viki#code_syntax_map = {}   "{{{2
+endif
+
 
 let g:viki#quit = 0
 
@@ -500,10 +521,16 @@ command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInWin3 :c
 command! -nargs=1 -bang -complete=customlist,viki#EditComplete VikiEditInWin4 :call viki#Edit(<q-args>, !empty("<bang>"), 4)
 
 " Update the current |viki-files| #Files region under the cursor.
-command! VikiFilesUpdate call viki#FilesUpdate()
+command! VikiFilesUpdate call viki#FilesRegionUpdate()
     
 " Update all |viki-files| #Files regions in the current buffer.
-command! VikiFilesUpdateAll call viki#FilesUpdateAll()
+command! VikiFilesUpdateAll call viki#FilesRegionUpdateAll()
+
+" Update the current |viki-grep| #Grep region under the cursor.
+command! VikiGrepUpdate call viki#GrepRegionUpdate()
+    
+" Update all |viki-grep| #Grep regions in the current buffer.
+command! VikiGrepUpdateAll call viki#GrepRegionUpdateAll()
 
 command! -nargs=* -bang -complete=command VikiFileExec call viki#FilesExec(<q-args>, '<bang>', 1)
 " |:execute| a vim command after doing some replacements with the command 
@@ -566,7 +593,7 @@ if !exists("g:vikiOpenFileWith_ANY")
     elseif has("mac")
         let g:vikiOpenFileWith_ANY = "exec 'silent !open '. shellescape('%{FILE}')"
     elseif exists('$XDG_CURRENT_DESKTOP') && !empty($XDG_CURRENT_DESKTOP)
-        let g:vikiOpenFileWith_ANY = "exec 'silent !xdg-open '. shellescape('%{FILE}')"
+        let g:vikiOpenFileWith_ANY = "exec 'silent !xdg-open '. shellescape('%{FILE}') .'&'"
     elseif $GNOME_DESKTOP_SESSION_ID != "" || $DESKTOP_SESSION == 'gnome'
         let g:vikiOpenFileWith_ANY = "exec 'silent !gnome-open '. shellescape('%{FILE}')"
     elseif exists("$KDEDIR") && !empty($KDEDIR)
@@ -664,7 +691,7 @@ if !exists("g:vikiOpenUrlWith_ANY")
     elseif has("mac")
         let g:vikiOpenUrlWith_ANY = "exec 'silent !open '. escape('%{URL}', ' &!%')"
     elseif exists('$XDG_CURRENT_DESKTOP') && !empty($XDG_CURRENT_DESKTOP)
-        let g:vikiOpenFileWith_ANY = "exec 'silent !xdg-open '. shellescape('%{URL}')"
+        let g:vikiOpenUrlWith_ANY = "exec 'silent !xdg-open '. shellescape('%{URL}')"
     elseif $GNOME_DESKTOP_SESSION_ID != ""
         let g:vikiOpenUrlWith_ANY = "exec 'silent !gnome-open '. shellescape('%{URL}')"
     elseif $KDEDIR != ""
@@ -752,6 +779,7 @@ function! viki#CanonicFilename(fname) "{{{3
     return substitute(simplify(a:fname), '[\/]\+', '/', 'g')
 endf
 
+
 " Build the rx to find viki names
 function! viki#FindRx() "{{{3
     let rx = s:AddToRegexp('', b:vikiSimpleNameSimpleRx)
@@ -759,6 +787,7 @@ function! viki#FindRx() "{{{3
     let rx = s:AddToRegexp(rx, b:vikiUrlSimpleRx)
     return rx
 endf
+
 
 " Wrap edit commands. Every action that creates a new buffer should use 
 " this function.
@@ -821,6 +850,7 @@ function! s:EditWrapper(cmd, fname) "{{{3
     endif
 endf
 
+
 " Find the previous heading
 function! viki#FindPrevHeading()
     let vikisr=@/
@@ -834,6 +864,7 @@ function! viki#FindPrevHeading()
     call search('\V\^'. head .'\s', 'bW')
     let @/=vikisr
 endf
+
 
 " Find the next heading
 function! viki#FindNextHeading()
@@ -857,6 +888,7 @@ function! viki#FindNextHeading()
     let @/=vikisr
 endf
 
+
 " Test whether we want to markup a certain viki name type for the current 
 " buffer
 " viki#IsSupportedType(type, ?types=b:vikiNameTypes)
@@ -876,6 +908,7 @@ function! viki#IsSupportedType(type, ...) "{{{3
     endif
 endf
 
+
 " Build an rx from a list of names
 function! viki#RxFromCollection(coll) "{{{3
     " TAssert IsList(a:coll)
@@ -886,6 +919,7 @@ function! viki#RxFromCollection(coll) "{{{3
         return '\V\('. rx .'\)'
     endif
 endf
+
 
 " Mark inexistent viki names
 " VikiMarkInexistent(line1, line2, ?maxcol, ?quick)
@@ -1044,6 +1078,7 @@ function! s:MarkInexistent(line1, line2, ...) "{{{3
     endtry
 endf
 
+
 " Actually highlight inexistent file names
 function! viki#HighlightInexistent() "{{{3
     if b:vikiMarkInexistent == 1
@@ -1066,13 +1101,14 @@ function! viki#HighlightInexistent() "{{{3
     endif
 endf
 
-" Check a text element for inexistent names
+
 if v:version == 700 && !has('patch8')
     function! s:SID()
         let fullname = expand("<sfile>")
         return matchstr(fullname, '<SNR>\d\+_')
     endf
 
+    " Check a text element for inexistent names
     function! viki#MarkInexistentInElement(elt) "{{{3
         if exists('b:vikiEnabled') && b:vikiEnabled <= 1
             finish
@@ -1130,15 +1166,18 @@ function! viki#MarkInexistentInRange(line1, line2) "{{{3
     endtry
 endf
 
+
 function! s:MarkInexistentInParagraph() "{{{3
     if getline('.') =~ '\S'
         call s:MarkInexistent(line("'{"), line("'}"))
     endif
 endf
 
+
 function! s:MarkInexistentInDocument() "{{{3
     call s:MarkInexistent(1, line("$"))
 endf
+
 
 function! s:MarkInexistentInParagraphVisible() "{{{3
     let l0 = max([line("'{"), line("w0")])
@@ -1146,19 +1185,23 @@ function! s:MarkInexistentInParagraphVisible() "{{{3
     call s:MarkInexistent(l0, l1)
 endf
 
+
 function! s:MarkInexistentInParagraphQuick() "{{{3
     let l0 = line("'{")
     let l1 = line("'}")
     call s:MarkInexistent(l0, l1, -1, 1)
 endf
 
+
 function! s:MarkInexistentInLine() "{{{3
     call s:MarkInexistent(line("."), line("."))
 endf
 
+
 function! s:MarkInexistentInLineQuick() "{{{3
     call s:MarkInexistent(line("."), line("."), (col('.') + 1), 1)
 endf
+
 
 " Set values for the cache
 function! s:CValsSet(cvals, var) "{{{3
@@ -1166,6 +1209,7 @@ function! s:CValsSet(cvals, var) "{{{3
         let a:cvals[a:var] = b:{a:var}
     endif
 endf
+
 
 " First-time markup of inexistent names. Handles cached values. Called 
 " from syntax/viki.vim
@@ -1192,6 +1236,7 @@ function! viki#MarkInexistentInitial() "{{{3
     call viki#MarkInexistentInElement('Document')
 endf
 
+
 function! viki#SaveCache(...) "{{{3
     if tlib#var#Get('vikiCacheInexistent', 'wbg')
         let cfile = a:0 >= 1 ? a:1 : tlib#cache#Filename('viki_inexistent', '', 1)
@@ -1207,6 +1252,7 @@ function! viki#SaveCache(...) "{{{3
     endif
 endf
 
+
 " The function called from autocommands: re-check for inexistent names 
 " when re-entering a buffer.
 function! viki#CheckInexistent() "{{{3
@@ -1214,6 +1260,7 @@ function! viki#CheckInexistent() "{{{3
         call viki#MarkInexistentInRange(b:vikiCheckInexistent, b:vikiCheckInexistent)
     endif
 endf
+
 
 " Initialize buffer-local variables on the basis of other variables "..." 
 " or from a global variable.
@@ -1239,6 +1286,7 @@ function! viki#SetBufferVar(name, ...) "{{{3
     endif
 endf
 
+
 " Get some vimscript code to set a variable from either a buffer-local or 
 " a global variable
 function! s:LetVar(name, var) "{{{3
@@ -1250,6 +1298,7 @@ function! s:LetVar(name, var) "{{{3
         return ''
     endif
 endf
+
 
 " Call a fn.family if existent, call fn otherwise.
 " viki#DispatchOnFamily(fn, ?family='', *args)
@@ -1274,6 +1323,7 @@ function! viki#DispatchOnFamily(fn, ...) "{{{3
     exe 'return viki_'. cmd .'('. args .')'
 endf
 
+
 function! viki#IsHyperWord(word) "{{{3
     if !exists('b:vikiHyperWordTable')
         return 0
@@ -1281,14 +1331,17 @@ function! viki#IsHyperWord(word) "{{{3
     return has_key(b:vikiHyperWordTable, s:CanonicHyperWord(a:word))
 endf
 
+
 function! viki#HyperWordValue(word) "{{{3
     return b:vikiHyperWordTable[s:CanonicHyperWord(a:word)]
 endf
+
 
 function! s:CanonicHyperWord(word) "{{{3
     " return substitute(a:word, '\s\+', '\\s\\+', 'g')
     return substitute(a:word, '\s\+', ' ', 'g')
 endf
+
 
 function! viki#CollectFileWords(table, simpleWikiName) "{{{3
     let patterns = []
@@ -1386,20 +1439,24 @@ function! s:CollectVikiWords(table, filename, basedir) "{{{3
     endif
 endf
 
+
 " Return a string defining upper-case characters
 function! s:UpperCharacters() "{{{3
     return exists('b:vikiUpperCharacters') ? b:vikiUpperCharacters : g:vikiUpperCharacters
 endf
+
 
 " Return a string defining lower-case characters
 function! s:LowerCharacters() "{{{3
     return exists('b:vikiLowerCharacters') ? b:vikiLowerCharacters : g:vikiLowerCharacters
 endf
 
+
 " Remove backslashes from string
 function! s:StripBackslash(string) "{{{3
     return substitute(a:string, '\\\(.\)', '\1', 'g')
 endf
+
 
 " Map a key that triggers checking for inexistent names
 function! viki#MapMarkInexistent(key, element) "{{{3
@@ -1450,6 +1507,7 @@ function! viki#RestoreCursorPosition(...) "{{{3
     endif
 endf
 
+
 " Save the cursor position
 function! viki#SaveCursorPosition() "{{{3
     let ve = &virtualedit
@@ -1473,6 +1531,7 @@ function! viki#SaveCursorPosition() "{{{3
     return ''
 endf
 
+
 " Display a debug message
 function! viki#DebugCursorPosition(...) "{{{3
     let bn = bufnr('%')
@@ -1491,15 +1550,18 @@ function! viki#DebugCursorPosition(...) "{{{3
     endif
 endf
 
+
 " Check if the key maps should support a specified functionality
 function! viki#MapFunctionality(mf, key)
     return a:mf == 'ALL' || (a:mf =~# '\<'. a:key .'\>')
 endf
 
+
 function! viki#MinorMode(...) "{{{3
     let type = a:0 >= 1 ? a:1 : ''
     call viki#DispatchOnFamily('MinorMode', type, 1)
 endf
+
 
 " Re-set minor mode if the buffer is already in viki minor mode.
 function! viki#MinorModeReset() "{{{3
@@ -1507,6 +1569,7 @@ function! viki#MinorModeReset() "{{{3
         call viki#DispatchOnFamily('MinorMode', '', 1)
     endif
 endf
+
 
 " Check whether line is within a region syntax
 function! viki#IsInRegion(line) "{{{3
@@ -1521,6 +1584,7 @@ function! viki#IsInRegion(line) "{{{3
     return 0
 endf
 
+
 " Set back references for use with viki#GoBack()
 function! s:SetBackRef(file, li, co) "{{{3
     if !empty(a:file)
@@ -1530,10 +1594,12 @@ function! s:SetBackRef(file, li, co) "{{{3
     endif
 endf
 
+
 " Retrieve a certain back reference
 function! s:SelectThisBackRef(n) "{{{3
     return 'let [vbf, vbl, vbc] = s:GetBackRef()['. a:n .']'
 endf
+
 
 " Select a back reference
 function! s:SelectBackRef(...) "{{{3
@@ -1554,6 +1620,7 @@ function! s:SelectBackRef(...) "{{{3
     endif
     return ''
 endf
+
 
 " Retrieve information for back references
 function! s:GetBackRef()
@@ -1579,6 +1646,7 @@ function! s:GetBackRef()
     endif
 endf
 
+
 " Jump to the parent buffer (or go back in history).
 " If b:vikiParent is defined, open this viki name, otherwise use 
 " |viki#GoBack()|.
@@ -1589,6 +1657,7 @@ function! viki#GoParent() "{{{3
         call viki#GoBack()
     endif
 endf
+
 
 " Go back in history.
 " Viki keeps record about the "source" files from where a viki page was 
@@ -1619,6 +1688,7 @@ function! viki#GoBack(...) "{{{3
     endif
 endf
 
+
 " Expand template strings as in
 " "foo %{FILE} bar", 'FILE', 'file.txt' => "foo file.txt bar"
 function! viki#SubstituteArgs(str, ...) "{{{3
@@ -1647,6 +1717,7 @@ function! viki#SubstituteArgs(str, ...) "{{{3
     return rv
 endf
 
+
 if !exists('*VikiAnchor_l')
     " Handle special anchors in extented viki names
     " Example: [[index#l=10]]
@@ -1657,12 +1728,14 @@ if !exists('*VikiAnchor_l')
     endf
 endif
 
+
 if !exists('*VikiAnchor_line')
     " Example: [[index#line=10]]
     function! VikiAnchor_line(arg) "{{{3
         call VikiAnchor_l(a:arg)
     endf
 endif
+
 
 if !exists('*VikiAnchor_rx')
     " Example: [[index#rx=foo]]
@@ -1672,12 +1745,14 @@ if !exists('*VikiAnchor_rx')
     endf
 endif
 
+
 if !exists('*VikiAnchor_vim')
     " Example: [[index#vim=/foo]]
     function! VikiAnchor_vim(arg) "{{{3
         exec s:StripBackslash(a:arg)
     endf
 endif
+
 
 " Return an rx for searching anchors
 function! viki#GetAnchorRx(anchor)
@@ -1696,6 +1771,7 @@ function! viki#GetAnchorRx(anchor)
     return '\V'. anchorRx
 endf
 
+
 " Set automatic anchor marks: #ma => 'a
 function! viki#SetAnchorMarks() "{{{3
     let view = winsaveview()
@@ -1710,6 +1786,7 @@ function! viki#SetAnchorMarks() "{{{3
         call QuickfixsignsSet('', ['marks'])
     endif
 endf
+
 
 " Get the window number where the destination file should be opened
 function! viki#GetWinNr(...) "{{{3
@@ -1726,6 +1803,7 @@ function! viki#GetWinNr(...) "{{{3
     endif
     return winNr
 endf
+
 
 " Set the window where to open a file/display a buffer
 function! viki#SetWindow(winNr) "{{{3
@@ -1744,6 +1822,7 @@ function! viki#SetWindow(winNr) "{{{3
         end
     endif
 endf
+
 
 " Open a filename in a certain window and jump to an anchor if any
 " viki#OpenLink(filename, anchor, ?create=0, ?postcmd='', ?wincmd=0)
@@ -1778,7 +1857,7 @@ function! viki#OpenLink(filename, anchor, ...) "{{{3
     elseif exists('b:editVikiPage')
         call s:EditLocalFile(b:editVikiPage, filename, fi, li, co, g:vikiDefNil)
     elseif isdirectory(filename)
-        call s:EditLocalFile(g:vikiExplorer, tlib#dir#PlainName(filename), fi, li, co, g:vikiDefNil)
+        call s:EditLocalFile(g:vikiExplorer, tlib#dir#NativeName(tlib#dir#PlainName(filename)), fi, li, co, g:vikiDefNil)
     else
         call s:EditLocalFile('edit', filename, fi, li, co, a:anchor)
     endif
@@ -1786,6 +1865,7 @@ function! viki#OpenLink(filename, anchor, ...) "{{{3
         exec postcmd
     endif
 endf
+
 
 " Open a local file in vim
 function! s:EditLocalFile(cmd, fname, fi, li, co, anchor) "{{{3
@@ -1807,6 +1887,7 @@ function! s:EditLocalFile(cmd, fname, fi, li, co, anchor) "{{{3
     call viki#DispatchOnFamily('FindAnchor', vf, a:anchor)
 endf
 
+
 " Get the current viki family
 function! viki#Family(...) "{{{3
     let anyway = a:0 >= 1 ? a:1 : 0
@@ -1818,6 +1899,7 @@ function! viki#Family(...) "{{{3
     return empty(rv) ? 'viki' : rv
 endf
 
+
 " Return the number of windows
 function! s:HowManyWindows() "{{{3
     let i = 1
@@ -1826,6 +1908,7 @@ function! s:HowManyWindows() "{{{3
     endwh
     return i - 1
 endf
+
 
 " Decompose an url into filename, anchor, args
 function! viki#DecomposeUrl(dest) "{{{3
@@ -1856,6 +1939,7 @@ function! viki#DecomposeUrl(dest) "{{{3
     return "let filename='". rv ."'|let anchor='". anchor ."'|let args='". args ."'"
 endf
 
+
 " Get a list of special files' suffixes
 function! viki#GetSpecialFilesSuffixes() "{{{3
     " TAssert IsList(g:vikiSpecialFiles)
@@ -1867,11 +1951,13 @@ function! viki#GetSpecialFilesSuffixes() "{{{3
     endif
 endf
 
+
 " Get an rx matching special files' suffixes
 function! viki#GetSpecialFilesSuffixesRx(...) "{{{3
     let sfx = a:0 >= 1 ? a:1 : viki#GetSpecialFilesSuffixes()
     return join(sfx, '\|')
 endf
+
 
 " Check if dest is a special file
 function! viki#IsSpecialFile(dest) "{{{3
@@ -1880,6 +1966,7 @@ function! viki#IsSpecialFile(dest) "{{{3
                 \ !(a:dest =~ g:vikiSpecialFilesExceptions)))
 endf
 
+
 " Check if dest uses a special protocol
 function! viki#IsSpecialProtocol(dest) "{{{3
     return a:dest =~ '^\('.b:vikiSpecialProtocols.'\):' &&
@@ -1887,12 +1974,14 @@ function! viki#IsSpecialProtocol(dest) "{{{3
                 \ !(a:dest =~ b:vikiSpecialProtocolsExceptions))
 endf
 
+
 " Check if dest is somehow special
 function! viki#IsSpecial(dest) "{{{3
     return viki#IsSpecialProtocol(a:dest) || 
                 \ viki#IsSpecialFile(a:dest) ||
                 \ isdirectory(a:dest)
 endf
+
 
 " Open a viki name/link
 function! s:FollowLink(def, ...) "{{{3
@@ -1932,6 +2021,7 @@ function! s:FollowLink(def, ...) "{{{3
     return ""
 endf
 
+
 " Actually open a viki name/link
 function! s:OpenLink(dest, anchor, winNr)
     let b:vikiNextWindow = a:winNr
@@ -1967,6 +2057,7 @@ function! s:OpenLink(dest, anchor, winNr)
     endtry
 endf
 
+
 function! viki#MakeUrl(dest, anchor) "{{{3
     if a:anchor == ""
         return a:dest
@@ -1974,6 +2065,7 @@ function! viki#MakeUrl(dest, anchor) "{{{3
         return join([a:dest, a:anchor], '#')
     endif 
 endf
+
 
 " Guess the interviki name from a viki name definition
 function! s:GuessInterViki(def) "{{{3
@@ -1992,6 +2084,7 @@ function! s:GuessInterViki(def) "{{{3
     endif
 endf
 
+
 " Somewhat pointless legacy function
 function! s:MakeVikiDefPart(txt) "{{{3
     if a:txt == ''
@@ -2001,12 +2094,14 @@ function! s:MakeVikiDefPart(txt) "{{{3
     endif
 endf
 
+
 " Return a structure or whatever describing a viki name/link
 function! viki#MakeDef(v_name, v_dest, v_anchor, v_part, v_type) "{{{3
     let arr = map([a:v_name, a:v_dest, a:v_anchor, a:v_part, a:v_type, 0], 's:MakeVikiDefPart(v:val)')
     " TLogDBG string(arr)
     return arr
 endf
+
 
 " Legacy function: Today we would use dictionaries for this
 " Return vimscript code that defines a set of variables on the basis of a 
@@ -2028,6 +2123,7 @@ function! viki#SplitDef(def) "{{{3
     return rv
 endf
 
+
 function! s:ExtractMatch(match, idx, default) "{{{3
     if a:idx > 0
         return get(a:match, a:idx, a:default)
@@ -2035,6 +2131,7 @@ function! s:ExtractMatch(match, idx, default) "{{{3
         return a:default
     endif
 endf
+
 
 function! viki#MalformedName(msg) "{{{3
     let msg = "Viki: Malformed viki name: ". a:msg
@@ -2046,6 +2143,7 @@ function! viki#MalformedName(msg) "{{{3
         echohl NONE
     endif
 endf
+
 
 " If txt matches a viki name typed as defined by compound return a 
 " structure defining this viki name.
@@ -2087,6 +2185,7 @@ function! viki#LinkDefinition(txt, col, compound, ignoreSyntax, type) "{{{3
     endif
 endf
 
+
 " Return a viki filename with a suffix
 function! viki#WithSuffix(fname)
     " TLogVAR a:fname
@@ -2097,6 +2196,7 @@ function! viki#WithSuffix(fname)
         return a:fname . s:GetSuffix()
     endif
 endf
+
 
 " Get the suffix to use for viki filenames
 function! s:GetSuffix() "{{{3
@@ -2112,6 +2212,7 @@ function! s:GetSuffix() "{{{3
     endif
     return g:vikiNameSuffix
 endf
+
 
 " Return the real destination for a simple viki name
 function! viki#ExpandSimpleName(dest, name, suffix) "{{{3
@@ -2138,10 +2239,12 @@ function! viki#ExpandSimpleName(dest, name, suffix) "{{{3
     endif
 endf
 
+
 " Check whether a vikiname uses an interviki
 function! viki#IsInterViki(vikiname)
     return  viki#IsSupportedType('i') && a:vikiname =~# s:InterVikiRx
 endf
+
 
 " Get the interviki name of a vikiname
 function! viki#InterVikiName(vikiname)
@@ -2151,6 +2254,7 @@ function! viki#InterVikiName(vikiname)
     return name
 endf
 
+
 " Get the plain vikiname of a vikiname
 function! viki#InterVikiPart(vikiname)
     let ml = matchlist(a:vikiname, s:InterVikiRx)
@@ -2158,6 +2262,7 @@ function! viki#InterVikiPart(vikiname)
     " echom "DBG" a:vikiname string(ml) part
     return part
 endf
+
 
 " Return vimscript code describing an interviki
 function! s:InterVikiDef(vikiname, ...)
@@ -2182,6 +2287,7 @@ function! s:InterVikiDef(vikiname, ...)
     end
     return vd
 endf
+
 
 " Return an interviki's root directory
 function! viki#InterVikiDest(vikiname, ...)
@@ -2235,6 +2341,7 @@ function! viki#InterVikiDest(vikiname, ...)
     endif
 endf
 
+
 function! s:RxifyFilename(filename) "{{{3
     let f = tlib#rx#Escape(a:filename)
     if exists('+shellslash')
@@ -2242,6 +2349,7 @@ function! s:RxifyFilename(filename) "{{{3
     endif
     return f
 endf
+
 
 " Return an interviki's suffix
 function! viki#InterVikiSuffix(vikiname, ...)
@@ -2267,6 +2375,7 @@ function! viki#InterVikiSuffix(vikiname, ...)
     endif
 endf
 
+
 " Return the modifiers in extended viki names
 function! viki#ExtendedModifier(part)
     " let mod = substitute(a:part, b:vikiExtendedNameRx, '\'.b:vikiExtendedNameModIdx, '')
@@ -2277,6 +2386,7 @@ function! viki#ExtendedModifier(part)
         return ''
     endif
 endf
+
 
 " Complete a file's basename on the basis of a list of suffixes
 function! viki#FindFileWithSuffix(filename, suffixes) "{{{3
@@ -2299,6 +2409,7 @@ function! viki#FindFileWithSuffix(filename, suffixes) "{{{3
     return g:vikiDefNil
 endf
 
+
 " Do something if no viki name was found under the cursor position
 function! s:LinkNotFoundEtc(oldmap, ignoreSyntax) "{{{3
     if a:oldmap == ""
@@ -2309,6 +2420,7 @@ function! s:LinkNotFoundEtc(oldmap, ignoreSyntax) "{{{3
         return a:oldmap
     endif
 endf
+
 
 " This is the core function that builds a viki name definition from what 
 " is under the cursor.
@@ -2394,6 +2506,7 @@ function! viki#GetLink(ignoreSyntax, ...) "{{{3
     endif
     return []
 endf
+
 
 " :display: viki#MaybeFollowLink(oldmap, ignoreSyntax, ?winNr=0)
 " Follow a viki name if any or complain about not having found a valid 
@@ -2516,6 +2629,7 @@ function! viki#Browse(name) "{{{3
     echoerr 'Viki: No an interviki name: '. a:name
 endf
 
+
 function! viki#BrowseComplete(ArgLead, CmdLine, CursorPos) "{{{3
     let rv = copy(g:vikiInterVikiNames)
     let rv = filter(rv, 'v:val =~ ''^'. a:ArgLead .'''')
@@ -2573,6 +2687,7 @@ function! s:EditCompleteMapAgent1(val, sfx, iv, rx) "{{{3
     endif
 endf
 
+
 " Command line completion of |:VikiEdit|
 function! viki#EditComplete(ArgLead, CmdLine, CursorPos) "{{{3
     " TLogVAR a:ArgLead, a:CmdLine, a:CursorPos
@@ -2629,6 +2744,7 @@ function! viki#EditComplete(ArgLead, CmdLine, CursorPos) "{{{3
     return rv
 endf
 
+
 " Edit the current directory's index page
 function! viki#Index() "{{{3
     if exists('b:vikiIndex')
@@ -2644,13 +2760,14 @@ function! viki#Index() "{{{3
 endf
 
 
-fun! viki#FindNextRegion(name) "{{{3
+function! viki#FindNextRegion(name) "{{{3
     let rx = s:GetRegionStartRx(a:name)
     return search(rx, 'We')
 endf
 
+
 " Indentation
-fun! viki#GetIndent()
+function! viki#GetIndent()
     let lr = &lazyredraw
     set lazyredraw
     try
@@ -2698,6 +2815,11 @@ fun! viki#GetIndent()
             " TLogVAR plCont, cind
             return cind
         end
+
+        " if pline =~ '^\s*\(+++\|!!!\|???\|###\)\s'
+        "     " TLogVAR "marker:", pline
+        "     return pind + 4
+        " endif
         
         if cind > 0
             " TLogVAR cind
@@ -2720,7 +2842,8 @@ fun! viki#GetIndent()
             let clDesc = matchend(cline, descRx)
             " let cln    = clList >= 0 ? clList : clDesc
 
-			let swhalf = &sw / 2
+			" let swhalf = &sw / 2
+			let swhalf = 2
 
             if clList >= 0 || clDesc >= 0 || clMark >= 0 || clPri >= 0
                 " let spaceEnd = matchend(cline, '^\s\+')
@@ -2783,6 +2906,7 @@ fun! viki#GetIndent()
     endtry
 endf
 
+
 function! viki#ExecExternal(cmd) "{{{3
     " TLogVAR a:cmd
     exec a:cmd
@@ -2793,15 +2917,29 @@ function! viki#ExecExternal(cmd) "{{{3
 endf
 
 
+function! viki#RegionUpdate() "{{{3
+    let [lh, lb, le, indent, regname] = s:GetRegionGeometry('')
+    let fn = printf('viki#%sRegionUpdate', regname)
+    if exists('*'. fn)
+        call call(fn, [])
+    endif
+endf
+
+
+function! viki#RegionUpdateAll() "{{{3
+    call s:UpdateAllRegions('Files\|Grep', function('viki#RegionUpdate'))
+endf
+
+
 " :doc:
 " #Files related stuff
 
-fun! viki#FilesUpdateAll() "{{{3
+function! s:UpdateAllRegions(name, update) "{{{3
     let view = winsaveview()
     try
         norm! gg
-        while viki#FindNextRegion('Files')
-            call viki#FilesUpdate()
+        while viki#FindNextRegion(a:name)
+            call call(a:update, [])
             norm! j
         endwh
     finally
@@ -2811,8 +2949,9 @@ fun! viki#FilesUpdateAll() "{{{3
     endtry
 endf
 
-fun! viki#FilesExec(cmd, bang, ...) "{{{3
-    let [lh, lb, le, indent] = s:GetRegionGeometry('Files')
+
+function! viki#FilesExec(cmd, bang, ...) "{{{3
+    let [lh, lb, le, indent, regname] = s:GetRegionGeometry('Files')
     if a:0 >= 1 && a:1
         let lb = line('.')
         let le = line('.') + 1
@@ -2833,23 +2972,27 @@ fun! viki#FilesExec(cmd, bang, ...) "{{{3
     endfor
 endf
 
-fun! viki#FilesCmd(cmd, bang) "{{{3
-    let [lh, lb, le, indent] = s:GetRegionGeometry('Files')
+
+function! viki#FilesCmd(cmd, bang) "{{{3
+    let [lh, lb, le, indent, regname] = s:GetRegionGeometry('Files')
     let ilen = len(indent)
     for t in s:CollectFileNames(lb, le, a:bang)
         exec VikiCmd_{a:cmd} .' '. escape(t, '%#\ ')
     endfor
 endf
 
-fun! viki#FilesCall(cmd, bang) "{{{3
-    let [lh, lb, le, indent] = s:GetRegionGeometry('Files')
+
+function! viki#FilesCall(cmd, bang) "{{{3
+    let [lh, lb, le, indent, regname] = s:GetRegionGeometry('Files')
     let ilen = len(indent)
     for t in s:CollectFileNames(lb, le, a:bang)
         call VikiCmd_{a:cmd}(t)
     endfor
 endf
 
-fun! s:CollectFileNames(lb, le, bang) "{{{3
+
+function! s:CollectFileNames(lb, le, bang) "{{{3
+    let s:isdir = {}
     let afile = viki#FilesGetFilename(getline('.'))
     let acc   = []
     for l in range(a:lb, a:le - 1)
@@ -2862,7 +3005,20 @@ fun! s:CollectFileNames(lb, le, bang) "{{{3
     return acc
 endf
 
-fun! s:IsEligibleLine(afile, bfile, bang) "{{{3
+
+let s:isdir = {}
+
+function! s:IsDir(filename) "{{{3
+    let rv = get(s:isdir, a:filename, -2)
+    if rv == -2
+        let rv = isdirectory(a:filename)
+        let s:isdir[a:filename] = rv
+    endif
+    return rv
+endf
+
+
+function! s:IsEligibleLine(afile, bfile, bang) "{{{3
     if empty(a:bang)
         return 1
     else
@@ -2877,7 +3033,8 @@ fun! s:IsEligibleLine(afile, bfile, bang) "{{{3
     endif
 endf
 
-fun! s:IsSubdir(adir, bdir) "{{{3
+
+function! s:IsSubdir(adir, bdir) "{{{3
     if a:adir == '' || a:bdir == ''
         return 0
     elseif a:adir == a:bdir
@@ -2887,18 +3044,28 @@ fun! s:IsSubdir(adir, bdir) "{{{3
     endif
 endf
 
-fun! viki#FilesUpdate() "{{{3
-    let [lh, lb, le, indent] = s:GetRegionGeometry('Files')
-    " TLogVAR lh, lb, le, indent
-    call s:DeleteRegionBody(lb, le)
-    call viki#DirListing(lh, lb, indent)
+
+function! viki#FilesRegionUpdateAll() "{{{3
+    call s:UpdateAllRegions('Files', function('viki#FilesRegionUpdate'))
 endf
+
+
+function! viki#FilesRegionUpdate() "{{{3
+    let [lh, lb, le, indent, regname] = s:GetRegionGeometry('Files')
+    " TLogVAR lh, lb, le, indent
+    let region = s:SaveRegionBody(1, lb, le)
+    call viki#DirListing(lh, lb, indent, region)
+endf
+
 
 " Update a #Files region. The following arguments are allowed to specify 
 " how the file list should be displayed:
 "
 "     glob=PATTERN ... A file pattern with |wildcards|. % and # (see 
-"                      |cmdline-special|) are expanded too.
+"                      |cmdline-special|) are expanded too. The pattern 
+"                      can also refer to an |interviki| (e.g. NOTES::*.txt).
+"                      Multiple patterns are separated by "|" (e.g. 
+"                      *.txt|*.viki).
 "     head=NUMBER .... Display the first N lines of the file's content
 "     list=detail .... Include additional file info
 "     list=flat ...... Display a flat list
@@ -2908,10 +3075,11 @@ endf
 "     sort=name|time|head ... Sort the list on the files' names, times, 
 "                      or head lines. If the argument begins with "-", 
 "                      the list is displayed in reverse order.
+"     format=expr      Filename format string (see |expand()|)
 "
 " Comments (i.e. text after the file link) are maintained if possible 
 " and if list is not "detail".
-fun! viki#DirListing(lhs, lhb, indent) "{{{3
+function! viki#DirListing(lhs, lhb, indent, region) "{{{3
     let args = s:GetRegionArgs(a:lhs, a:lhb - 1)
     " TLogVAR args
     let patt = get(args, 'glob', '')
@@ -2921,8 +3089,10 @@ fun! viki#DirListing(lhs, lhb, indent) "{{{3
     else
         let deep = patt =~ '\*\*'
         let bufdir = expand('%:p:h')
-        if patt !~ '^\([%\\/]\|\w\+:\)' && !&autochdir && bufdir != getcwd()
-            let patt = tlib#file#Join([expand('%:p:h'), patt])
+        if viki#IsInterViki(patt)
+            let patt = viki#InterVikiDest(patt)
+        elseif patt !~ '^\([%\\/]\|\w\+:\)' && !&autochdir && bufdir != getcwd()
+            let patt = tlib#file#Join([bufdir, patt])
         endif
         " TLogVAR patt
         if patt =~ '^[^\\/*?]*[*?]'
@@ -2935,17 +3105,52 @@ fun! viki#DirListing(lhs, lhb, indent) "{{{3
         let view = winsaveview()
         let t = @t
         try
-            let ls = split(glob(patt), '\n')
+            let ls = split(glob(patt), '|')
             " TLogVAR ls
             let types = get(args, 'types', '')
-            if !empty(types)
-                let show_files = stridx(types, 'f') != -1
+            if empty(types)
+                let show_dirs  = 1
+                let show_files = 1
+            else
                 let show_dirs  = stridx(types, 'd') != -1
-                if show_files || show_dirs
-                    call filter(ls, '(show_files && !isdirectory(v:val)) || (show_dirs && isdirectory(v:val))')
+                let show_files = stridx(types, 'f') != -1
+            endif
+            if show_files || show_dirs
+                " if empty(fnamemodify(patt, ':e'))
+                " TLogVAR patt
+                if stridx(patt, '**') == -1
+                    call filter(ls, '(show_files && !s:IsDir(v:val)) || (show_dirs && s:IsDir(v:val))')
                 else
-                    let ls = []
+                    let ls1 = []
+                    let rootdir = ''
+                    for lsitem in ls
+                        let lsdir = s:IsDir(lsitem)
+                        if lsdir
+                            if show_dirs
+                                call add(ls1, lsitem)
+                            endif
+                        elseif show_files
+                            if show_dirs
+                                let lsdirname = fnamemodify(lsitem, ':p:h')
+                                " TLogVAR lsdirname, index(ls1,lsdirname)
+                                if empty(rootdir) || strwidth(lsdirname) < strwidth(rootdir)
+                                    let rootdir = lsdirname
+                                endif
+                                if index(ls1, lsdirname) == -1
+                                    call add(ls1, lsdirname)
+                                endif
+                            endif
+                            call add(ls1, lsitem)
+                        endif
+                    endfor
+                    if !empty(rootdir)
+                        call remove(ls1, index(ls1, rootdir))
+                    endif
+                    " TLogVAR rootdir
+                    let ls = ls1
                 endif
+            else
+                let ls = []
             endif
             let filter = get(args, 'filter', '')
             if !empty(filter)
@@ -2980,15 +3185,15 @@ fun! viki#DirListing(lhs, lhb, indent) "{{{3
                     endif
                 endif
                 let s:getfileentry_deep = 0
-                let ls = map(ls, 's:GetFileEntry(v:val, deep, list, head, s:files_options)')
+                let ls = map(ls, 's:GetFileEntry(v:val, a:region, deep, list, head, args)')
                 if !empty(sort)
                     let ls = sort(ls, 's:SortFiles')
                 endif
                 unlet s:files_options
                 let ls = map(ls, 'a:indent . v:val.filename')
-                let @t = join(ls, "\<c-j>") ."\<c-j>"
-                " TLogVAR a:lhb
-                exec 'norm! '. a:lhb .'G"t'. (a:lhb > line('$') ? 'p' : 'P')
+                call s:UpdateRegionContent(a:region, ls, a:lhb)
+            else
+                call s:DeleteRegionContent(a:region)
             endif
         finally
             let @t = t
@@ -3007,7 +3212,7 @@ function! s:SortFiles(i1, i2) "{{{3
 endf
 
 
-fun! s:GetFileEntry(file, deep, list, head, options) "{{{3
+function! s:GetFileEntry(file, region, deep, list, head, args) "{{{3
     let f = []
     let props = {}
     let d = s:GetDepth(a:file) - s:dirlisting_depth0
@@ -3027,59 +3232,69 @@ fun! s:GetFileEntry(file, deep, list, head, options) "{{{3
         let props.fperm = getfperm(a:file)
         call add(attr, props.fperm)
     else
-        if isdirectory(a:file)
+        if s:IsDir(a:file)
             let is_dir = 1
         endif
     endif
     if index(a:list, 'flat') == -1
         let prefix  = repeat(' ', d)
         if a:deep
-            if s:getfileentry_deep == d
-                let prefix .= is_dir ? ' +' : ' |'
-            else
+            if s:getfileentry_deep < d
                 let prefix .= is_dir ? '`+' : '`|'
+            else
+                let prefix .= is_dir ? ' +' : ' |'
             endif
-            let s:getfileentry_deep = d
+            if is_dir
+                let s:getfileentry_deep = max([0, d - 1])
+            else
+                let s:getfileentry_deep = d
+            endif
         else
             let prefix .= is_dir ? '+' : '|'
         endif
         let prefix .= ' '
         call add(f, prefix)
     endif
-    if g:viki_viki#conceal_extended_link_markup && has('conceal')
-        call add(f, '[['. a:file .']['. fnamemodify(a:file, ':t') .']!]')
+    let format = get(a:args, 'format', ':t')
+    let file_t = fnamemodify(a:file, format)
+    if is_dir
+        let file_t .= '/'
+    endif
+    if a:file != file_t && g:viki_viki#conceal_extended_link_markup && has('conceal')
+        call add(f, '[['. a:file .']['. file_t .']!]')
     else
         call add(f, '[['. a:file .']!]')
     endif
     if !empty(attr)
         call add(f, ' {'. join(attr, '|') .'}')
     endif
-    if a:head > 0 && !isdirectory(a:file)
+    if a:head > 0 && !s:IsDir(a:file)
         let props.head = s:GetHead(a:file, a:head)
         call add(f, ' -- '. props.head)
     else
-        if get(a:options, 'head', 0)
-            let props.head = s:GetHead(a:file, a:options.head)
+        if get(s:files_options, 'head', 0)
+            let props.head = s:GetHead(a:file, s:files_options.head)
         endif
-        let c = get(s:savedComments, a:file, '')
+        let c = get(a:region.comments, a:file, '')
         " TLogVAR a:file, c
         if !empty(c)
             call add(f, c)
         endif
     endif
-    if get(a:options, 'ftime', 0) && !has_key(props, 'ftime')
+    if get(s:files_options, 'ftime', 0) && !has_key(props, 'ftime')
         let props.ftime = strftime('%Y-%m-%d %H:%M:%S', getftime(a:file))
     endif
     let props.filename = join(f, '')
     return props
 endf
 
+
 function! s:GetHead(file, head) "{{{3
     let lines = readfile(a:file, '', a:head)
     let lines = filter(lines, 'v:val =~ ''\S''')
     let lines = map(lines, 'substitute(v:val, g:viki#files_head_rx, "", "g")')
     let head_text = join(lines, '|')
-    " TLogVAR &l:fenc, &l:enc, head_text
+    let head_text = substitute(head_text, "[[:cntrl:]]", "", "g")
     if &l:fenc != &l:enc && has('iconv')
         let head_text = iconv(head_text, &l:fenc, &l:enc)
         " TLogVAR head_text
@@ -3087,16 +3302,18 @@ function! s:GetHead(file, head) "{{{3
     return head_text
 endf
 
-fun! s:GetDepth(file) "{{{3
+
+function! s:GetDepth(file) "{{{3
     return len(substitute(a:file, '[^\/]', '', 'g'))
 endf
 
-fun! s:GetRegionArgs(ls, le) "{{{3
+
+function! s:GetRegionArgs(ls, le) "{{{3
     let t = @t
     try
         let t = s:GetBrokenLine(a:ls, a:le)
         " TLogVAR t
-        let t = matchstr(t, '^\s*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\zs.\{-}\ze<<$')
+        let t = matchstr(t, '^\s*#\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)\zs.\{-}\ze<<\S*$')
         " TLogVAR t
         let args = {}
         let rx = '^\s*\(\(\S\{-}\)=\("\(\(\"\|.\{-}\)\{-}\)"\|\(\(\S\+\|\\ \)\+\)\)\|\(\w\)\+!\)\s*'
@@ -3135,25 +3352,29 @@ fun! s:GetRegionArgs(ls, le) "{{{3
     endtry
 endf
 
-fun! s:GetBrokenLine(ls, le) "{{{3
+
+function! s:GetBrokenLine(ls, le) "{{{3
     let t = @t
     try
         exec 'norm! '. a:ls .'G"ty'. a:le .'G'
         let @t = substitute(@t, '[^\\]\zs\\\n\s*', '', 'g')
         let @t = substitute(@t, '\n*$', '', 'g')
+        let @t = substitute(@t, '^\n', '', 'g')
         return @t
     finally
         let @t = t
     endtry
 endf
 
-fun! s:GetRegionStartRx(...) "{{{3
+
+function! s:GetRegionStartRx(...) "{{{3
     let name = a:0 >= 1 && !empty(a:1) ? '\(\('. a:1 .'\>\)\)' : '\([A-Z]\([a-z][A-Za-z]*\)\?\>\|!!!\)'
-    let rx_start = '^\([[:blank:]]*\)#'. name .'\(\\\n\|.\)\{-}<<\(.*\)$'
+    let rx_start = '^\([[:blank:]]*\)#\('. name .'\)\(\\\n\|.\)\{-}<<\(.*\)$'
     return rx_start
 endf
 
-fun! s:GetRegionGeometry(...) "{{{3
+
+function! s:GetRegionGeometry(...) "{{{3
     " TLogVAR a:000
     let view = winsaveview()
     try
@@ -3170,65 +3391,97 @@ fun! s:GetRegionGeometry(...) "{{{3
             let hdt = s:GetBrokenLine(hds, hde)
             let hdm = matchlist(hdt, rx_start)
             let hdi = hdm[1]
-            let rx_end = '\V\^\[[:blank:]]\*'. escape(hdm[5], '\') .'\[[:blank:]]\*\$'
+            let hdn = hdm[2]
+            let rx_end = '\V\^\[[:blank:]]\*'. escape(hdm[6], '\') .'\[[:blank:]]\*\$'
             if hds == line('$')
                 let hbe = hds + 1
             else
                 let hbe = search(rx_end, 'W')
             endif
-            if hbe == 0 && empty(hdm[5])
+            if hbe == 0 && empty(hdm[6])
                 let hbe = line('$') + 1
             endif
             " TLogVAR hdm, hds, hde, hbe
             if hds > 0 && hde > 0 && hbe > 0
-                return [hds, hde + 1, hbe, hdi]
+                return [hds, hde + 1, hbe, hdi, hdn]
             else
                 echoerr "Viki: Can't determine region geometry: ". string([hds, hde, hbe, hdi, hdm, rx_start, rx_end])
             endif
         else
             echoerr "Viki: Can't determine region geometry: ". join([rx_start], ', ')
         endif
-        return [0, 0, 0, '']
+        return [0, 0, 0, '', '']
     finally
         call winrestview(view)
     endtry
 endf
 
-fun! s:DeleteRegionBody(...) "{{{3
+
+function! s:DeleteRegionContent(region) "{{{3
+    " TLogVAR a:region
+    if !empty(a:region.lines) && a:region.lines.lb <= a:region.lines.le1
+        " TLogVAR a:region.lines.lb, a:region.lines.le1
+        exec 'norm! '. a:region.lines.lb .'Gd'. a:region.lines.le1 .'G'
+    endif
+endf
+
+
+function! s:UpdateRegionContent(region, lines, lhb) "{{{3
+    if a:lines != get(a:region.lines, 'lines', [])
+        call s:DeleteRegionContent(a:region)
+        if !empty(a:lines)
+            let t = @t
+            try
+                let @t = join(a:lines, "\<c-j>") ."\<c-j>"
+                " TLogVAR @t
+                exec 'silent norm! '. a:lhb .'G"t'. (a:lhb > line('$') ? 'p' : 'P')
+            finally
+                let @t = t
+            endtry
+        endif
+    endif
+endf
+
+
+function! s:SaveRegionBody(savecomments, ...) "{{{3
     if a:0 >= 2
         let lb = a:1
         let le = a:2
     else
-        let [lh, lb, le, indent] = s:GetRegionGeometry('Files')
+        let [lh, lb, le, indent, regname] = s:GetRegionGeometry('Files')
     endif
-    " TLogVAR lb, le
-    if le <= line('$') + 1
-        call s:SaveComments(lb, le - 1)
-        if le > lb
-            exec 'norm! '. lb .'Gd'. (le - 1) .'G'
+    let le1 = le - 1
+    " TLogVAR a:savecomments, lb, le, le1, line('$')
+    if le1 <= line('$')
+        let savedLines = {'lb': lb, 'le1': le1, 'lines': getline(lb, le1)}
+        let savedComments = {}
+        if a:savecomments
+            for l in range(lb, le1)
+                let t = getline(l)
+                let k = viki#FilesGetFilename(t)
+                if !empty(k)
+                    let comment = viki#FilesGetComment(t)
+                    let savedComments[k] = comment
+                    " TLogVAR k, t, comment
+                endif
+            endfor
         endif
+    else
+        let savedLines = {}
+        let savedComments = {}
     endif
+    " TLogVAR savedLines
+    " TLogVAR savedComments
+    return {'lines': savedLines, 'comments': savedComments}
 endf
 
-fun! s:SaveComments(lb, le) "{{{3
-    " TLogVAR a:lb, a:le
-    let s:savedComments = {}
-    for l in range(a:lb, a:le)
-        let t = getline(l)
-        let k = viki#FilesGetFilename(t)
-        if !empty(k)
-            let comment = viki#FilesGetComment(t)
-            let s:savedComments[k] = comment
-            " TLogVAR k, t, comment
-        endif
-    endfor
-endf
 
-fun! viki#FilesGetFilename(t) "{{{3
+function! viki#FilesGetFilename(t) "{{{3
     return matchstr(a:t, '^\s*[`_+|\\-]*\s*\[\[\zs.\{-}\ze\]\(\[\|!\]\)')
 endf
 
-fun! viki#FilesGetComment(t) "{{{3
+
+function! viki#FilesGetComment(t) "{{{3
     return matchstr(a:t, '^\s*[`_+|\\-]*\s*\[\[.\{-}\]!\]\( {.\{-}}\)\?\zs.*')
 endf
 
@@ -3430,12 +3683,12 @@ function! s:VikiFolds() "{{{3
 endf
 
 
-func s:NumericSort(i1, i2)
+function! s:NumericSort(i1, i2)
     return a:i1 == a:i2 ? 0 : a:i1 > a:i2 ? 1 : -1
 endfunc
 
 
-function viki#FoldLevel(lnum)
+function! viki#FoldLevel(lnum)
     let vikiFolds = s:VikiFolds()
     if vikiFolds == ''
         " TLogDBG 'no folds'
@@ -3502,16 +3755,102 @@ endf
 
 
 function! viki#UpdateHeadings() "{{{3
-    let viki_headings = {}
+    let b:viki_headings = {}
     let pos = getpos('.')
+    let sreg = @/
     try
-        silent! g/^\*\+\s/let viki_headings[line('.')] = matchend(getline('.'), '^\*\+\s')
+        " silent! g/^\*\+ /let b:viki_headings[line('.')] = matchend(getline('.'), '^\*\+\s')
+        silent! g/^\*\+ /let b:viki_headings[line('.')] = stridx(getline('.'), ' ')
     finally
+        let @/ = sreg
         call setpos('.', pos)
     endtry
-    if !exists('b:viki_headings') || b:viki_headings != viki_headings
-        let b:viki_headings = viki_headings
-    endif
+    " if !exists('b:viki_headings') || b:viki_headings != viki_headings
+    "     let b:viki_headings = viki_headings
+    " endif
     " TLogVAR len(viki_headings)
+endf
+
+
+function! viki#GrepRegionUpdateAll() "{{{3
+    call s:UpdateAllRegions('Grep', function('viki#GrepRegionUpdate'))
+endf
+
+
+function! viki#GrepRegionUpdate() "{{{3
+    let [lh, lb, le, indent, regname] = s:GetRegionGeometry('Grep')
+    " TLogVAR lh, lb, le, indent
+    let args = s:GetRegionArgs(lh, lb - 1)
+    " TLogVAR lh, args
+    let rx  = get(args, 'rx', '')
+    let glob = split(get(args, 'glob', ''), '|')
+    if empty(rx) || empty(glob)
+        throw '#Grep: Must have rx and glob arguments'
+    endif
+    let glob = map(glob, 'viki#IsInterViki(v:val) ? viki#InterVikiDest(v:val) : v:val')
+    " TLogVAR glob
+    let region = s:SaveRegionBody(0, lb, le)
+    " TLogVAR region
+    let qfl = tlib#grep#List(rx, glob)
+    " TLogVAR qfl
+    let lines = []
+    let bufnr = bufnr('%')
+    for item in qfl
+        " let valid = get(item, 'valid', 0)
+        " if valid
+        if item.bufnr != bufnr
+            let filename = fnamemodify(bufname(item.bufnr), ':p')
+            let lnum = get(item, 'lnum', -1)
+            let dfname = filename
+            if lnum != -1
+                let dfname .= '#l='. lnum
+            endif
+            if g:viki_viki#conceal_extended_link_markup && has('conceal')
+                let lnk = printf('[[%s][%s]]', dfname, fnamemodify(filename, ':t'))
+            else
+                let lnk = printf('[[%s]]', dfname)
+            endif
+            let err = get(item, 'nr', '') . get(item, 'type', '')
+            let text = substitute(get(item, 'text', ''), '^\s\+', '', '')
+            if empty(err) || err == '0'
+                let msg = text
+            else
+                let msg = printf('%s: %s', err, text)
+            endif
+            call add(lines, printf('  %s :: %s', lnk, msg))
+            unlet! err text
+        endif
+        " endif
+    endfor
+    " TLogVAR lines
+    call s:UpdateRegionContent(region, lines, lb)
+endf
+
+
+let s:valid_filetypes = {}
+
+function! viki#CollectSyntaxRegionsFiletypes() "{{{3
+    let rx = '^\s*#Code\>.\{-}\<syntax=\zs\w\+\ze\>\(\\\n\|.\)\{-}<<'
+    let view = winsaveview()
+    let ftypes = {}
+    for ft in g:viki#code_syntax + keys(g:viki#code_syntax_map)
+        let ftypes[ft] = 1
+    endfor
+    try
+        exec 'silent g/'. rx .'/ let ftypes[matchstr(getline("."), rx)] = 1'
+    finally
+        call winrestview(view)
+    endtry
+    for ftype in keys(ftypes)
+        if !has_key(s:valid_filetypes, ftype)
+            let ftype1 = get(g:viki#code_syntax_map, ftype, ftype)
+            let s:valid_filetypes[ftype] = !empty(globpath(&rtp, 'syntax/'. ftype1 .'.vim') . globpath(&rtp, 'after/syntax/'. ftype1 .'.vim'))
+        endif
+        if !s:valid_filetypes[ftype]
+            call remove(ftypes, ftype)
+        endif
+    endfor
+    " echom "DBG" string(s:valid_filetypes)
+    return keys(ftypes)
 endf
 

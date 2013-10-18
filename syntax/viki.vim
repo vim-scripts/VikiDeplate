@@ -2,8 +2,8 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     30-Dez-2003.
-" @Last Change: 2012-09-18.
-" @Revision: 0.1041
+" @Last Change: 2013-10-17.
+" @Revision: 0.1102
 
 if version < 600
     syntax clear
@@ -60,10 +60,10 @@ if has('conceal') && &enc == 'utf-8'
                 \ ]
         
         exec 'syn match vikiSymbol'. s:name .' /\V'. s:chars .'/ conceal cchar='. s:cchar
-        call add(s:sym_cluster, s:name)
+        call add(s:sym_cluster, 'vikiSymbol'. s:name)
     endfor
-    syn match vikiSymbols /\V\(&\(#\d\+\|\w\+\);\)/
-    exec 'syn cluster vikiSymbols contains=vikiSymbols,'. join(s:sym_cluster, ',')
+    syn match vikiSymbolExtra /\V\(&\(#\d\+\|\w\+\);\)/
+    exec 'syn cluster vikiSymbols contains=vikiSymbolExtra,'. join(s:sym_cluster, ',')
     unlet s:name s:chars s:cchar s:sym_cluster
 else
     " syn match vikiSymbols /\(--\|!=\|==\+\|\~\~\+\|<-\+>\|<=\+>\|<\~\+>\|<-\+\|-\+>\|<=\+\|=\+>\|<\~\+\|\~\+>\|\.\.\.\)/
@@ -175,7 +175,7 @@ syn match vikiCommand /^\C[[:blank:]]*#\([A-Z]\{2,}\)\>\(\\\n\|.\)*/
 " syn match vikiFilesMarkers /\[\[\([^\/]\+\/\)*\|\]!\]/ contained containedin=vikiFiles
 " syn match vikiFilesIndicators /{.\{-}}/ contained containedin=vikiFiles
 syn match vikiFilesIndicators /^\s*[`_+|\\-]\+\s/ contained containedin=vikiFiles
-syn match vikiFiles /^\s*[`_+|\\-]\+\s\+\[\[.\{-}\]!\].*$/
+syn match vikiFiles /^\(\s*[`_+|\\-]\+\s\+\)\?\[\[.\{-}\]!\].*$/
             \ contained containedin=vikiFilesRegion contains=vikiExtendedLink,vikiFilesIndicators
 syn region vikiFilesRegion matchgroup=vikiMacroDelim
             \ start=/^[[:blank:]]*#Files\>\(\\\n\|.\)\{-}<<\z(.*\)$/ 
@@ -202,31 +202,59 @@ syn region vikiTexRegion matchgroup=vikiMacroDelim
             \ contains=@texmathMath
 
 
+if &ft == 'viki'
+    let s:is_keyword = &l:iskeyword
+    for s:filetype in viki#CollectSyntaxRegionsFiletypes()
+        unlet! b:current_syntax
+        setl iskeyword&
+        let s:filetype1 = get(g:viki#code_syntax_map, s:filetype, s:filetype)
+        exec 'syntax include @vikiCode_'. s:filetype 'syntax/'. s:filetype1 .'.vim'
+        exec 'silent! syntax include @vikiCode_'. s:filetype 'after/syntax/'. s:filetype1 .'.vim'
+        exec 'syn region vikiCodeRegion_'. s:filetype
+                    \ 'matchgroup=vikiMacroDelim'
+                    \ 'start=/^\s*#Code\>.\{-}\<syntax='. s:filetype .'\>\(\\\n\|.\)\{-}<<\z(.*\)$/'
+                    \ 'end=/^[[:blank:]]*\z1\([[:blank:]].*\)\?$/'
+                    \ 'contains=@vikiCode_'. s:filetype
+        " Workaround based on vimviki Issue 115
+        if s:filetype =~ 'perl'
+            syntax clear perlFunctionName
+        endif
+    endfor
+    let &l:iskeyword = s:is_keyword
+    unlet! s:filetype s:filetype1 s:is_keyword
+endif
+
+
 syn match vikiList /^[[:blank:]]\+\([-+*#?@]\|[0-9#]\+\.\|[a-zA-Z?]\.\)\ze[[:blank:]]/
 syn match vikiDescription /^[[:blank:]]\+\(\\\n\|.\)\{-1,}[[:blank:]]::\ze[[:blank:]]/ contains=@vikiHyperLinks,vikiEscapedChar,vikiComment
 
-syn match vikiPriorityListTodo0 /#\(T: \+.\{-}\u.\{-}:\|\d*\u\d*\)/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine nextgroup=vikiProgress,vikiTag,vikiContact
-syn match vikiPriorityListTodoA /#\(T: \+.\{-}A.\{-}:\|\d*A\d*\)/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine nextgroup=vikiProgress,vikiTag,vikiContact
-syn match vikiPriorityListTodoB /#\(T: \+.\{-}B.\{-}:\|\d*B\d*\)/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine nextgroup=vikiProgress,vikiTag,vikiContact
-syn match vikiPriorityListTodoC /#\(T: \+.\{-}C.\{-}:\|\d*C\d*\)/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine nextgroup=vikiProgress,vikiTag,vikiContact
-syn match vikiPriorityListTodoD /#\(T: \+.\{-}D.\{-}:\|\d*D\d*\)/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine nextgroup=vikiProgress,vikiTag,vikiContact
-syn match vikiPriorityListTodoE /#\(T: \+.\{-}E.\{-}:\|\d*E\d*\)/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine nextgroup=vikiProgress,vikiTag,vikiContact
-syn match vikiPriorityListTodoF /#\(T: \+.\{-}F.\{-}:\|\d*F\d*\)/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine nextgroup=vikiProgress,vikiTag,vikiContact
+syn match vikiPriorityListTodo0 /#\(T: \+.\{-}\u.\{-}:\|\d*\u\d*\)/ contained containedin=vikiPriorityListTodoGen nextgroup=vikiProgress
+syn match vikiPriorityListTodoA /#\(T: \+.\{-}A.\{-}:\|\d*A\d*\)/ contained containedin=vikiPriorityListTodoGen nextgroup=vikiProgress
+syn match vikiPriorityListTodoB /#\(T: \+.\{-}B.\{-}:\|\d*B\d*\)/ contained containedin=vikiPriorityListTodoGen nextgroup=vikiProgress
+syn match vikiPriorityListTodoC /#\(T: \+.\{-}C.\{-}:\|\d*C\d*\)/ contained containedin=vikiPriorityListTodoGen nextgroup=vikiProgress
+syn match vikiPriorityListTodoD /#\(T: \+.\{-}D.\{-}:\|\d*D\d*\)/ contained containedin=vikiPriorityListTodoGen nextgroup=vikiProgress
+syn match vikiPriorityListTodoE /#\(T: \+.\{-}E.\{-}:\|\d*E\d*\)/ contained containedin=vikiPriorityListTodoGen nextgroup=vikiProgress
+syn match vikiPriorityListTodoF /#\(T: \+.\{-}F.\{-}:\|\d*F\d*\)/ contained containedin=vikiPriorityListTodoGen nextgroup=vikiProgress
 
 syn cluster vikiPriorityListTodo contains=vikiPriorityListTodoA,vikiPriorityListTodoB,vikiPriorityListTodoC,vikiPriorityListTodoD,vikiPriorityListTodoE,vikiPriorityListTodoF,vikiPriorityListTodo0
 
 let s:progress = '\(_\|[0-9]\+%\|\d\{4}-\d\{2}-\d\{2}\(\.\.\d\{4}-\d\{2}-\d\{2}\)\?\)'
-exec 'syn match vikiProgress /\s\+'. s:progress .'/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine nextgroup=vikiTag,vikiContact'
+exec 'syn match vikiProgress /\s\+'. s:progress .'/ contained containedin=vikiPriorityListTodoGen'
 
-" syn match vikiTag /\s\+\[[^[].\{-}\]/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine
-syn match vikiTag /\(\s\+\(:\(\d\{4}-\d\{2}-\d\{2}\|[^[:punct:][:space:]]\+\)\+\)\+\)\+/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine nextgroup=vikiTag,vikiContact
-
-syn match vikiContact /\s\+@[^[:punct:][:space:]]\+/ contained containedin=vikiPriorityListTodoGen,vikiPriorityListTodoGenInLine nextgroup=vikiContact
+if has('conceal')
+    syn match vikiTagPrefix /\s\zs:/ contained containedin=vikiTag conceal
+    syn match vikiContactPrefix /\s\zs@/ contained containedin=vikiContact conceal
+    syn match vikiTag /\(\s\(:\(\d\{4}-\d\{2}-\d\{2}\|[^[:punct:][:space:]]\+\)\+\)\+\)\+/ contained containedin=vikiPriorityListTodoGen contains=vikiTagPrefix
+    syn match vikiContact /\s@[^[:punct:][:space:]]\+/ contained containedin=vikiPriorityListTodoGen contains=vikiContactPrefix
+else
+    syn match vikiTag /\(\s\+\(:\(\d\{4}-\d\{2}-\d\{2}\|[^[:punct:][:space:]]\+\)\+\)\+\)\+/ contained containedin=vikiPriorityListTodoGen
+    syn match vikiContact /\s\+\zs@[^[:punct:][:space:]]\+/ contained containedin=vikiPriorityListTodoGen
+endif
 
 
 let s:plquant = g:vikiIndentedPriorityLists ? '\+' : '*'
 
-exec 'syn match vikiPriorityListTodoGen /^[[:blank:]]'. s:plquant .'\zs#\(T: \+.\{-}\u.\{-}:\|\d*\u\d*\(\s\+'. s:progress .'\)\?\)\(\s\+\(:[^[:punct:][:space:]]\+\)\+\)*\(\s\+@[^[:punct:][:space:]]\+\)*\ze[[:punct:][:space:]]/ contains=vikiContact,vikiTag,@vikiPriorityListTodo,@vikiText'
+exec 'syn match vikiPriorityListTodoGen /^[[:blank:]]'. s:plquant .'\zs#\(T: \+.\{-}\u.\{-}:\|\d*\u\d*\(\s\+'. s:progress .'\)\?\)\s.*$/ contains=vikiContact,vikiTag,@vikiPriorityListTodo,@vikiText'
 exec 'syn match vikiPriorityListDoneGen /^[[:blank:]]'. s:plquant .'\zs#\(T: \+x\([0-9%-]\+\)\?.\{-}\u.\{-}:\|\(T: \+\)\?\d*\u\d* \+x'. s:progress .'\?\):\? .*/'
 exec 'syn match vikiPriorityListDoneX /^[[:blank:]]'. s:plquant .'\zs#X\d\?\s.*/'
 
@@ -307,6 +335,10 @@ if version >= 508 || !exists("did_viki_syntax_inits")
   exec 'hi vikiPriorityListTodoF'. vikiPriorityListTodo  .'ctermbg=LightGreen guibg=LightGreen'
   HiLink vikiContact Special
   HiLink vikiTag Title
+  if has('conceal')
+      HiLink vikiContactPrefix Special
+      HiLink vikiTagPrefix Title
+  endif
   HiLink vikiProgress WarningMsg
  
   " let vikiPriorityListDone = ' guifg='. s:cm1 .'Gray '
