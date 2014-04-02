@@ -2,8 +2,8 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2013-10-02.
-" @Revision:    2753
+" @Last Change: 2014-01-28.
+" @Revision:    2759
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -31,7 +31,7 @@ if !exists('g:loaded_tlib') || g:loaded_tlib < 106
         finish
     endif
 endif
-let loaded_viki = 406
+let loaded_viki = 407
 
 
 if !exists("tlist_viki_settings")
@@ -156,10 +156,16 @@ function! VikiDefine(name, prefix, ...) "{{{3
     call sort(g:vikiInterVikiNames)
     let g:vikiInter{a:name}          = a:prefix
     let g:vikiInter{a:name}_suffix   = a:0 >= 1 && a:1 != '*' ? a:1 : g:vikiNameSuffix
-    " let index = a:0 >= 2 && a:2 != '' ? a:2 : g:vikiIndex
-    " let findex = fnamemodify(g:vikiInter{a:name} .'/'. index . g:vikiInter{a:name}_suffix, ':p')
-    " if filereadable(findex)
     let index = a:0 >= 2 && a:2 != '' ? a:2 : ''
+    " TLogVAR index
+    " if empty(index)
+    "     let index0 = g:vikiIndex . g:vikiInter{a:name}_suffix
+    "     let findex = fnamemodify(g:vikiInter{a:name} .'/'. index0, ':p')
+    "     if filereadable(findex)
+    "         let index = index0
+    "     endif
+    "     " TLogVAR index, index0, findex
+    " endif
     if !empty(index)
         let vname = VikiMakeName(a:name, index, 0)
         let g:vikiInter{a:name}_index = index

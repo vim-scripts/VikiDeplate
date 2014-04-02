@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2007-03-25.
-" @Last Change: 2013-10-16.
-" @Revision:    1338
+" @Last Change: 2014-01-29.
+" @Revision:    1353
 
 
 exec 'runtime! autoload/viki/enc_'. substitute(&enc, '[\/<>*+&:?]', '_', 'g') .'.vim'
@@ -623,6 +623,7 @@ if !exists('*VikiOpenSpecialFile')
         else
             let prot = ''
         endif
+        " TLogVAR prot
         if prot != ''
             " let openFile = viki#SubstituteArgs(prot, 'FILE', fnameescape(a:file))
             let openFile = viki#SubstituteArgs(prot, 'FILE', a:file)
@@ -2037,16 +2038,21 @@ function! s:OpenLink(dest, anchor, winNr)
             " TLogVAR url
             call VikiOpenSpecialProtocol(url)
         elseif viki#IsSpecialFile(a:dest)
+            " TLogVAR viki#IsSpecialFile(a:dest)
             call VikiOpenSpecialFile(a:dest)
         elseif isdirectory(a:dest)
+            " TLogVAR isdirectory(a:dest)
             " exec g:vikiExplorer .' '. a:dest
             call viki#OpenLink(a:dest, a:anchor, 0, '', a:winNr)
         elseif filereadable(a:dest) "reference to a local, already existing file
+            " TLogVAR filereadable(a:dest)
             call viki#OpenLink(a:dest, a:anchor, 0, '', a:winNr)
         elseif bufexists(a:dest) && buflisted(a:dest)
+            " TLogVAR bufexists(a:dest)
             call s:EditWrapper('buffer!', a:dest)
         else
-            let ok = input("File doesn't exists. Create '".a:dest."'? (Y/n) ", "y")
+            let ok = input("File doesn't exist. Create '".a:dest."'? (Y/n) ", "y")
+            " TLogVAR ok
             if ok != "" && ok != "n"
                 let b:vikiCheckInexistent = line(".")
                 call viki#OpenLink(a:dest, a:anchor, 1, '', a:winNr)
@@ -2313,11 +2319,21 @@ function! viki#InterVikiDest(vikiname, ...)
         elseif i_type == 'fmt'
             let v_dest = s:sprintf1(f, v_dest)
         else
-            if empty(v_dest) && exists('i_index')
-                let v_dest = i_index
+            let i_dest = fnamemodify(i_dest, ':p')
+            if empty(v_dest)
+                if !exists('i_index')
+                    let suffix = viki#InterVikiSuffix(a:vikiname)
+                    let findex = fnamemodify(i_dest .'/'. g:vikiIndex . suffix, ':p')
+                    " TLogVAR a:vikiname, suffix, g:vikiIndex, findex
+                    if filereadable(findex)
+                        let i_index = g:vikiIndex
+                    endif
+                endif
+                if exists('i_index')
+                    let v_dest = i_index
+                endif
                 " TLogVAR v_dest, i_index
             endif
-            let i_dest = fnamemodify(i_dest, ':p')
             " TLogVAR i_dest, rx
             if !empty(rx)
                 if i_dest !~ '[\/]$'
@@ -2522,6 +2538,7 @@ function! viki#MaybeFollowLink(oldmap, ignoreSyntax, ...) "{{{3
     let winNr = a:0 >= 1 ? a:1 : 0
     " TLogVAR winNr
     let def = viki#GetLink(a:ignoreSyntax)
+    " TLogVAR def
     " TAssert IsList(def)
     if empty(def)
         return s:LinkNotFoundEtc(a:oldmap, a:ignoreSyntax)
@@ -2745,13 +2762,19 @@ function! viki#EditComplete(ArgLead, CmdLine, CursorPos) "{{{3
 endf
 
 
-" Edit the current directory's index page
-function! viki#Index() "{{{3
+function! s:IndexName() "{{{3
     if exists('b:vikiIndex')
         let fname = viki#WithSuffix(b:vikiIndex)
     else
         let fname = viki#WithSuffix(g:vikiIndex)
     endif
+    return fname
+endf
+
+
+" Edit the current directory's index page
+function! viki#Index() "{{{3
+    let fname = s:IndexName()
     if filereadable(fname)
         return viki#OpenLink(fname, '')
     else
