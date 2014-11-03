@@ -2,8 +2,8 @@
 " @Author:      Tom Link (micathom AT gmail com?subject=vim)
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     08-Dec-2003.
-" @Last Change: 2014-01-28.
-" @Revision:    2759
+" @Last Change: 2014-10-21.
+" @Revision:    2766
 "
 " GetLatestVimScripts: 861 1 viki.vim
 "
@@ -31,7 +31,7 @@ if !exists('g:loaded_tlib') || g:loaded_tlib < 106
         finish
     endif
 endif
-let loaded_viki = 407
+let loaded_viki = 408
 
 
 if !exists("tlist_viki_settings")
@@ -106,6 +106,18 @@ if !exists('g:vikiIndentedPriorityLists')
     let g:vikiIndentedPriorityLists = 1   "{{{2
 endif
 
+if !exists("g:vikiFoldMethodVersion")
+    " :nodoc:
+    " Choose folding method version
+    " Viki supports several methods (1..7) for defining folds. If you 
+    " find that text entry is slowed down it is probably due to the 
+    " chosen fold method. You could try to use another method (see 
+    " ../ftplugin/viki.vim for alternative methods) or check out this 
+    " vim tip:
+    " http://vim.wikia.com/wiki/Keep_folds_closed_while_inserting_text
+    let g:vikiFoldMethodVersion = 8 "{{{2
+endif
+
 
 " -1 ... open all links in a new windows
 " -2 ... open all links in a new windows but split vertically
@@ -149,7 +161,7 @@ endf
 " VikiDefine(name, prefix, ?suffix="*", ?index="Index.${suffix}")
 " suffix == "*" -> g:vikiNameSuffix
 function! VikiDefine(name, prefix, ...) "{{{3
-    if a:name =~ '[^A-Z]'
+    if a:name =~ '[^A-Z0-9]'
         throw 'Invalid interviki name: '. a:name
     endif
     call add(g:vikiInterVikiNames, a:name .'::')
@@ -255,4 +267,9 @@ augroup viki
     " As viki uses its own styles, we have to reset &filetype.
     autocmd ColorScheme * if &filetype == 'viki' | set filetype=viki | endif
 augroup END
+
+
+if exists('g:loaded_setsyntax') && g:loaded_setsyntax > 0
+    let g:setsyntax_options['viki']['vikiPriorityListTodoGen'] = {'&l:tw': 0}
+endif
 
